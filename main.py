@@ -75,7 +75,7 @@ def main():
         print("\nRunning full experiment...")
         run_full_experiment(
             env_name=args.env,
-            num_seeds=len(args.num_seeds),
+            num_seeds=num_seeds,
             training_steps=args.steps,
             eval_episodes=args.eval_episodes,
             save_dir=args.save_dir,
@@ -116,10 +116,6 @@ python main.py --mode full --save-dir my_experiment_results
 python main.py --mode train --seeds 1 --steps 10000
 
 
-#!/bin/bash
-
-pip install -r requirements.txt
-python main.py --mode full --save-dir my_experiment_results
 
 """
 
