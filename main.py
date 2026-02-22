@@ -75,7 +75,7 @@ def main():
         print("\nRunning full experiment...")
         run_full_experiment(
             env_name=args.env,
-            num_seeds=num_seeds,
+            num_seeds=args.num_seeds,
             training_steps=args.steps,
             eval_episodes=args.eval_episodes,
             save_dir=args.save_dir,
