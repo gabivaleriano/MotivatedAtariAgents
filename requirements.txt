@@ -1,0 +1,6 @@
+﻿numpy
+matplotlib
+tqdm
+imageio
+gymnasium[atari]
+ale-py
