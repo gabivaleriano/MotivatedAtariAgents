@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 """
@@ -21,14 +21,17 @@ from dqn import DQN_RAM
 from environment import make_env_with_metrics
 from utils import ReplayBuffer, set_seed
 
-
 # Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 
-def train_with_seed(env_name, seed, total_steps=1_000_000, save_dir='results'):
-    """Train one agent with a specific seed"""
+def train_with_seed(env_name, 
+                    seed, 
+                    total_steps=1_000_000, 
+                    agent_style="Vanila",
+                    save_dir='results'):
+
     print(f"\n{'='*60}")
     print(f"Training with seed {seed}")
     print(f"{'='*60}\n")
@@ -37,7 +40,7 @@ def train_with_seed(env_name, seed, total_steps=1_000_000, save_dir='results'):
     set_seed(seed)
     
     # Create environment
-    env = make_env_with_metrics(env_name, use_ram=True)
+    env = make_env_with_metrics(env_name, agent_style = agent_style, use_ram=True)
     
     # Create networks
     net = DQN_RAM(env.action_space.n).to(device)
@@ -92,7 +95,7 @@ def train_with_seed(env_name, seed, total_steps=1_000_000, save_dir='results'):
             state, _ = env.reset()
         
         # Training step
-        if len(buf) >= 32:
+        if len(buf) >= 10000:
             s, a_batch, r_batch, ns, d = buf.sample(32)
             s = torch.tensor(s, device=device)
             ns = torch.tensor(ns, device=device)
@@ -112,6 +115,7 @@ def train_with_seed(env_name, seed, total_steps=1_000_000, save_dir='results'):
             loss = F.mse_loss(q, tgt)
             opt.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=10)
             opt.step()
         
         # Update target network
@@ -163,66 +167,115 @@ def run_full_experiment(env_name="MsPacman",
                        num_seeds=5, 
                        training_steps=1_000_000,
                        eval_episodes=100,
+                       agent_styles=["Vanila"],
                        save_dir='results'):
     """Run complete experiment: multiple training runs + evaluation"""
     
     os.makedirs(save_dir, exist_ok=True)
     
-    all_results = {
-        'training': [],
-        'evaluation': []
-    }
+    all_results = {}
+
+    # Train each agent style
+    for agent_style in agent_styles:
+        print(f"\n{'='*60}")
+        print(f"TRAINING AGENT STYLE: {agent_style}")
+        print(f"{'='*60}\n")
+        
+        style_results = {
+            'training': [],
+            'evaluation': []
+        }
+        
+        # Train with multiple seeds
+        seeds = [1, 42, 123, 456, 789][:num_seeds]
+        
+        for seed in seeds:
+            # Train
+            
+            net, rewards, metrics = train_with_seed(
+                env_name=env_name,
+                seed=seed,
+                total_steps=training_steps,
+                save_dir=f"{save_dir}/{agent_style}",  # Separate folder per style
+                agent_style=agent_style  # PASS agent style
+            )
+            
+            style_results['training'].append({
+                'seed': seed,
+                'rewards': rewards,
+                'metrics': metrics
+            })
+            
+            # Evaluate
+            eval_metrics = evaluate_agent(
+                net=net,
+                env_name=env_name,
+                num_episodes=eval_episodes,
+                base_seed=seed * 1000,
+                agent_style = agent_style
+            )
+            
+            style_results['evaluation'].append({
+                'train_seed': seed,
+                'eval_metrics': eval_metrics
+            })
+        
+        all_results[agent_style] = style_results        
     
-    seeds = [1, 42, 123, 456, 789][:num_seeds]
-    
-    for seed in seeds:
-        # Train
-        net, rewards, metrics = train_with_seed(
-            env_name, 
-            seed=seed, 
-            total_steps=training_steps,
-            save_dir=save_dir
-        )
-        
-        all_results['training'].append({
-            'seed': seed,
-            'rewards': rewards,
-            'metrics': metrics
-        })
-        
-        # Evaluate
-        from evaluate import evaluate_agent
-        
-        eval_metrics = evaluate_agent(
-            net, 
-            env_name, 
-            num_episodes=eval_episodes,
-            base_seed=seed * 1000,
-            deterministic=True
-        )
-        
-        all_results['evaluation'].append({
-            'train_seed': seed,
-            'eval_metrics': eval_metrics
-        })
-        
-        # Save evaluation
-        eval_save_path = os.path.join(save_dir, f'evaluation_seed_{seed}.pkl')
-        with open(eval_save_path, 'wb') as f:
-            pickle.dump(eval_metrics, f)
-    
-    # Save combined results
-    final_save_path = os.path.join(save_dir, 'all_results.pkl')
-    with open(final_save_path, 'wb') as f:
+    final_path = os.path.join(save_dir, 'all_agent_styles_results.pkl')
+    with open(final_path, 'wb') as f:
         pickle.dump(all_results, f)
-    
-    print(f"\nExperiment complete! Results saved to {save_dir}")
     
     return all_results
 
 
-# In[ ]:
+def evaluate_agent(net, 
+                   env_name, 
+                   num_episodes=100, 
+                   base_seed=42, 
+                   deterministic=True,
+                   agent_style = 'Vanilla'):
 
-
-
+    print(f"\n{'='*60}")
+    print(f"Evaluating agent for {num_episodes} episodes")
+    print(f"{'='*60}\n")
+    
+    env = make_env_with_metrics(env_name, agent_style=agent_style, use_ram=True)
+    net.eval()
+    
+    eval_metrics = []
+    
+    for episode in tqdm(range(num_episodes), desc="Evaluation"):
+        # Use different seed for each episode
+        episode_seed = base_seed + episode
+        np.random.seed(episode_seed)
+        torch.manual_seed(episode_seed)
+        random.seed(episode_seed)
+        
+        state, _ = env.reset(seed=episode_seed)
+        done = False
+        
+        while not done:
+            with torch.no_grad():
+                q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
+                if deterministic:
+                    a = q.argmax(1).item()
+                else:
+                    # Small epsilon for variation
+                    if random.random() < 0.05:
+                        a = env.action_space.sample()
+                    else:
+                        a = q.argmax(1).item()
+            
+            state, r, term, trunc, info = env.step(a)
+            done = term or trunc
+            
+            if done and 'metrics' in info:
+                metrics = info['metrics']
+                metrics['eval_episode'] = episode
+                metrics['eval_seed'] = episode_seed
+                eval_metrics.append(metrics)
+    
+    net.train()
+    return eval_metrics
 

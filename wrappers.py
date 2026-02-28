@@ -167,3 +167,179 @@ class MetricsWrapper(gym.Wrapper):
             'ghosts_eaten': ghosts_eaten,
         }
 
+
+# In[ ]:
+
+
+class HullWrapper(gym.Wrapper):
+
+    def __init__(self, env, 
+                 lambda_wanting=1.0,    # Drive reduction weight (Hull component)
+                 hunger_inc=0.2, 
+                 max_hunger=10.0):
+        super().__init__(env)
+        self.lambda_wanting = lambda_wanting
+        self.hunger_inc = hunger_inc
+        self.max_hunger = max_hunger
+        self.hunger = 0.0
+        self.last_score = 0
+
+        self.intrinsic_total = 0
+        
+        # Step-level tracking (history within episode)
+        self.step_history = {
+            'hunger': [],
+            'wanting': [],
+            'intrinsic': [],
+            'extrinsic': []
+        }
+        
+        # Cross-episode tracking (for analyzing trends across episodes)
+        self.episode_history = {
+            'want_total': [],
+            'intrinsic_total': [],
+            'extrinsic_total': [],
+            'episode_length': [],
+            'pellets_eaten': []
+        }
+        
+        self.current_step = 0
+        self.current_episode = 0
+        self.pellets_this_episode = 0
+    
+    def reset(self, **kwargs):
+        # Save episode history before reset
+        if self.current_step > 0:  # Not first reset
+            self.episode_history['want_total'].append(self.want_total)
+            self.episode_history['intrinsic_total'].append(self.intrinsic_total)
+            self.episode_history['extrinsic_total'].append(self.episode_extrinsic_reward)
+            self.episode_history['episode_length'].append(self.current_step)
+            self.episode_history['pellets_eaten'].append(self.pellets_this_episode)
+        
+        # Reset episode-level trackers
+        self.hunger = 0.0
+        self.episode_extrinsic_reward = 0.0
+        self.want_total = 0
+        self.intrinsic_total = 0
+        self.current_step = 0
+        self.pellets_this_episode = 0
+        
+        # Reset step history
+        self.step_history = {
+            'hunger': [],
+            'wanting': [],
+            'intrinsic': [],
+            'extrinsic': [],
+            'pellet_eaten': []
+        }
+        
+        obs, info = self.env.reset(**kwargs)
+        self.last_score = info.get("score", 0) or 0
+        self.current_episode += 1
+        
+        return obs, info
+
+   
+    def step(self, action):
+        obs, reward, term, trunc, info = self.env.step(action)
+        
+        # Detect pellet consumption
+        score_now = info.get("score", 0) or 0
+        #pellet_eaten = score_now > self.last_score
+        pellet_eaten = (reward == 10)
+        self.last_score = score_now
+        
+        if pellet_eaten:
+            self.pellets_this_episode += 1
+        
+        old_hunger = self.hunger
+    
+        self.hunger += self.hunger_inc
+        self.hunger = min(self.hunger, self.max_hunger)
+        
+        # Initialize reward components
+        wanting_reward = 0.0
+
+        
+        if pellet_eaten:
+            self.hunger *= 0.2  # Satiation             
+            drive_reduction = old_hunger - self.hunger
+            
+        wanting_reward = -self.lambda_wanting * self.hunger                
+        
+        # Total intrinsic reward combines both systems
+        intrinsic_reward = wanting_reward 
+        
+        # Total reward (for learning)
+        total_reward = reward + intrinsic_reward
+        
+        # Accumulate episode totals
+        self.episode_extrinsic_reward += reward
+        self.want_total += wanting_reward
+        self.intrinsic_total += intrinsic_reward
+        
+        # Record step-level data
+        self.step_history['hunger'].append(self.hunger)
+        self.step_history['wanting'].append(wanting_reward)
+        self.step_history['intrinsic'].append(intrinsic_reward)
+        self.step_history['extrinsic'].append(reward)
+        self.step_history['pellet_eaten'].append(pellet_eaten)
+        
+        self.current_step += 1
+        
+        # On episode end, store extrinsic total in info
+        if term or trunc:
+            if "episode" not in info:
+                info["episode"] = {}
+            info["episode"]["r_extrinsic"] = self.episode_extrinsic_reward
+            info["episode"]["want"] = self.want_total
+            info["episode"]["intrinsic"] = self.intrinsic_total
+            info["episode"]["step_history"] = self.step_history.copy()  # Include step history
+            info["episode"]["pellets_eaten"] = self.pellets_this_episode
+            
+        # Track all components for analysis
+        info["hunger_drive"] = self.hunger
+        info["wanting_reward"] = wanting_reward
+        info["intrinsic_reward"] = intrinsic_reward
+        info["current_step"] = self.current_step
+        info["current_episode"] = self.current_episode
+       
+        return obs, total_reward, term, trunc, info
+    
+    def get_episode_history(self):
+        """Get history across all episodes"""
+        return self.episode_history.copy()
+    
+    def get_current_step_history(self):
+        """Get step-by-step history for current episode"""
+        return self.step_history.copy()
+
+print("Hull wrapper ready ✓")
+
+
+# In[ ]:
+
+
+class HullIntrinsicMotivation(gym.Wrapper):
+    """
+    Hull-style intrinsic motivation
+    """
+    def __init__(self, env, curiosity_weight=0.1):
+        super().__init__(env)
+
+    
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        
+        # Calculate intrinsic reward (curiosity)
+        intrinsic_reward = self._calculate_curiosity(obs)
+        
+        # Add intrinsic reward to extrinsic reward
+        total_reward = reward + self.curiosity_weight * intrinsic_reward
+        
+        # Store intrinsic reward in info for tracking
+        info['intrinsic_reward'] = intrinsic_reward
+        info['extrinsic_reward'] = reward
+        
+        return obs, total_reward, terminated, truncated, info
+

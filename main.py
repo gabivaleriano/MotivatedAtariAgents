@@ -10,8 +10,7 @@ Run training with multiple seeds and evaluation
 """
 import argparse
 import os
-from experiment import train_with_seed, run_full_experiment
-from evaluate import evaluate_agent
+from experiment import train_with_seed, run_full_experiment, evaluate_agent
 from utils import set_seed
 
 
@@ -22,28 +21,26 @@ def main():
     parser = argparse.ArgumentParser(description='Train DQN on Ms. Pac-Man')
     
     # Experiment settings
-    parser.add_argument('--mode', type=str, default='full', 
-                       choices=['eval', 'full'],
-                       help='Mode: eval only, or full experiment')
     parser.add_argument('--env', type=str, default='MsPacman',
                        help='Environment name')
-    parser.add_argument('--num_seeds', type=int, nargs='+', default=1,
+    parser.add_argument('--num_seeds', type=int, default=1,
                        help='Number of seeds for training')
     parser.add_argument('--steps', type=int, default=1_000_000,
                        help='Total training steps per seed')
     parser.add_argument('--eval-episodes', type=int, default=100,
                        help='Number of evaluation episodes')
+    parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['Vanilla', 'Hull'],
+                       choices = ['Vanilla', 'Hull', 'Want_like', 'Incentive']
+                       help='List with agents to be trained. Options: Vanilla, Hull, Want_like, Incentive')
+
+    parser.add_argument('--agent-styles', type=str, 
+                       default=['Vanilla'],
+                       choices=['Vanilla', 'Hull', 'Want_like', 'Incentive'],
+                       help='List of agent styles to train. Options: Vanilla, Hull, Want_like, Incentive')
     
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
                        help='Directory to save results')
-    parser.add_argument('--render', action='store_true',
-                       help='Render environment during evaluation')
-    
-    # Device
-    parser.add_argument('--device', type=str, default='auto',
-                       choices=['auto', 'cpu', 'cuda'],
-                       help='Device to use for training')
     
     args = parser.parse_args()
     
@@ -51,35 +48,27 @@ def main():
     print("="*60)
     print("MS. PAC-MAN DQN EXPERIMENT")
     print("="*60)
-    print(f"Mode: {args.mode}")
     print(f"Environment: {args.env}")
-    print(f"Nunber of seeds: {args.num_seeds}")
+    print(f"Number of seeds: {args.num_seeds}")
     print(f"Training steps: {args.steps:,}")
     print(f"Evaluation episodes: {args.eval_episodes}")
+    print(f"Agent styles: {args.agent_styles}")
     print(f"Save directory: {args.save_dir}")
-    print(f"Device: {args.device}")
     print("="*60)
     print()
     
     # Create save directory
     os.makedirs(args.save_dir, exist_ok=True)    
        
-    if args.mode == 'eval':
-        # Evaluate pre-trained agent
-        print("\nEvaluation mode - load trained model and evaluate")
-        # TODO: Implement loading and evaluating saved model
-        print("Not implemented yet. Use --mode full for complete workflow.")
-        
-    elif args.mode == 'full':
-        # Run full experiment: train multiple seeds + evaluate each
-        print("\nRunning full experiment...")
-        run_full_experiment(
-            env_name=args.env,
-            num_seeds=args.num_seeds,
-            training_steps=args.steps,
-            eval_episodes=args.eval_episodes,
-            save_dir=args.save_dir,
-        )
+    print("\nRunning full experiment...")
+    run_full_experiment(
+        env_name=args.env,
+        num_seeds=args.num_seeds,
+        training_steps=args.steps,
+        eval_episodes=args.eval_episodes,
+        save_dir=args.save_dir,
+        agent_styles=args.agent_styles,
+    )
     
     print("\n" + "="*60)
     print("EXPERIMENT COMPLETE!")
@@ -115,7 +104,7 @@ python main.py --mode full --save-dir my_experiment_results
 # Quick test run (fewer steps)
 python main.py --mode train --seeds 1 --steps 10000
 
-
+#python main.py --num-seeds 3 --steps 500000 --agent-styles Vanilla Hull
 
 """
 
