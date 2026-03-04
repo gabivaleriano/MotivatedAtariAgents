@@ -29,14 +29,11 @@ def main():
                        help='Total training steps per seed')
     parser.add_argument('--eval-episodes', type=int, default=100,
                        help='Number of evaluation episodes')
+    parser.add_argument('--clip_rewards', action='store_true', default=False,
+                   help='Clip rewards to -1, 0, 1')
     parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['Vanilla', 'Hull'],
-                       choices = ['Vanilla', 'Hull', 'Want_like', 'Incentive']
+                       choices = ['Vanilla', 'Hull', 'Want_like', 'Incentive'],
                        help='List with agents to be trained. Options: Vanilla, Hull, Want_like, Incentive')
-
-    parser.add_argument('--agent-styles', type=str, 
-                       default=['Vanilla'],
-                       choices=['Vanilla', 'Hull', 'Want_like', 'Incentive'],
-                       help='List of agent styles to train. Options: Vanilla, Hull, Want_like, Incentive')
     
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
@@ -68,6 +65,7 @@ def main():
         eval_episodes=args.eval_episodes,
         save_dir=args.save_dir,
         agent_styles=args.agent_styles,
+        clip_rewards=args.clip_rewards,
     )
     
     print("\n" + "="*60)

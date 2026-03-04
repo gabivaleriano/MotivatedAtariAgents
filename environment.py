@@ -13,7 +13,7 @@ import gymnasium as gym
 import numpy as np
 
 from gymnasium.wrappers import TransformReward, RecordEpisodeStatistics
-from wrappers import MetricsWrapper, RawRewardTracker, HullWrapper
+from wrappers import CombineRewardWrapper, HullWrapper, MetricsWrapper, RawRewardTracker
 
 gym.register_envs(ale_py)
 
@@ -28,22 +28,19 @@ def make_env_with_metrics(name,
                    obs_type="ram" if use_ram else "rgb",
                    frameskip=4)
 
-    # Track raw rewards before any modification
-    env = RawRewardTracker(env)    
-    env = RecordEpisodeStatistics(env)
-    
-    X_BYTE = 10  
-    Y_BYTE = 16  
-    PELLET_BYTE = 119      
-    env = MetricsWrapper(env, X_BYTE, Y_BYTE, PELLET_BYTE)
-
-    if agent_style == 'Hull':
-        env = HullWrapper(env)
+    env = RawRewardTracker(env)
     
     if clip_rewards:
-        env = TransformReward(env, lambda r: np.sign(r))  # Clip
+        env = TransformReward(env, lambda r: np.sign(r))
     else:
-        env = apply_reward_shaping(env)  # Shape
+        env = apply_reward_shaping(env)
+    
+    if agent_style == 'Hull':
+        env = HullWrapper(env)
+        env = CombineRewardWrapper(env)
+    
+    env = RecordEpisodeStatistics(env)
+    env = MetricsWrapper(env)
     
     return env
 

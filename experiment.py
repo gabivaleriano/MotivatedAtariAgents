@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 from dqn import DQN_RAM
 from environment import make_env_with_metrics
-from utils import ReplayBuffer, set_seed
+from utils import ReplayBuffer, set_seed 
 
 # Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,7 +29,8 @@ print(f"Using device: {device}")
 def train_with_seed(env_name, 
                     seed, 
                     total_steps=1_000_000, 
-                    agent_style="Vanila",
+                    agent_style="Vanilla",
+                    clip_rewards=False,
                     save_dir='results'):
 
     print(f"\n{'='*60}")
@@ -40,7 +41,7 @@ def train_with_seed(env_name,
     set_seed(seed)
     
     # Create environment
-    env = make_env_with_metrics(env_name, agent_style = agent_style, use_ram=True)
+    env = make_env_with_metrics(env_name, agent_style = agent_style, use_ram=True, clip_rewards=clip_rewards)
     
     # Create networks
     net = DQN_RAM(env.action_space.n).to(device)
@@ -81,14 +82,18 @@ def train_with_seed(env_name,
         
         # Episode ended
         if done:
-            rewards_history.append(info["episode"]["r"])
+            rewards_history.append(info["episode"].get("r", 0))
             
-            # Store metrics
             if 'metrics' in info:
                 metrics = info['metrics']
                 metrics['episode'] = episode_count
                 metrics['timestep'] = t
                 metrics['seed'] = seed
+                
+                if agent_style == 'Hull':      # ← inside the block ✓
+                    metrics['want_total'] = info["episode"].get("want", 0)
+                    metrics['step_history'] = info["episode"].get("step_history", {})
+                
                 all_metrics.append(metrics)
             
             episode_count += 1
@@ -167,8 +172,9 @@ def run_full_experiment(env_name="MsPacman",
                        num_seeds=5, 
                        training_steps=1_000_000,
                        eval_episodes=100,
-                       agent_styles=["Vanila"],
-                       save_dir='results'):
+                       agent_styles=["Vanilla"],
+                       save_dir='results',
+                       clip_rewards=False):
     """Run complete experiment: multiple training runs + evaluation"""
     
     os.makedirs(save_dir, exist_ok=True)
@@ -197,7 +203,8 @@ def run_full_experiment(env_name="MsPacman",
                 seed=seed,
                 total_steps=training_steps,
                 save_dir=f"{save_dir}/{agent_style}",  # Separate folder per style
-                agent_style=agent_style  # PASS agent style
+                agent_style=agent_style, 
+                clip_rewards=clip_rewards
             )
             
             style_results['training'].append({
@@ -240,7 +247,7 @@ def evaluate_agent(net,
     print(f"Evaluating agent for {num_episodes} episodes")
     print(f"{'='*60}\n")
     
-    env = make_env_with_metrics(env_name, agent_style=agent_style, use_ram=True)
+    env = make_env_with_metrics(env_name, agent_style=agent_style, use_ram=True, clip_rewards=False)
     net.eval()
     
     eval_metrics = []
