@@ -29,6 +29,7 @@ def make_env_with_metrics(name,
                    frameskip=4)
 
     env = RawRewardTracker(env)
+    env = RecordEpisodeStatistics(env)
     
     if clip_rewards:
         env = TransformReward(env, lambda r: np.sign(r))
@@ -39,7 +40,6 @@ def make_env_with_metrics(name,
         env = HullWrapper(env)
         env = CombineRewardWrapper(env)
     
-    env = RecordEpisodeStatistics(env)
     env = MetricsWrapper(env)
     
     return env

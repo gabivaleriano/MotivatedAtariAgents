@@ -9,8 +9,6 @@ Custom Gymnasium wrappers for Ms. Pac-Man
 """
 import gymnasium as gym
 import numpy as np
-from utils import detect_pellet_eaten
-
 
 class RawRewardTracker(gym.Wrapper):
     """Track raw rewards before any transformation"""
@@ -66,6 +64,9 @@ class MetricsWrapper(gym.Wrapper):
         self.pellets_eaten = 0
         self.current_level = 0
         self.past_119 = 0                       # past value of byte 119 - pellets
+        self.x_byte = 10
+        self.y_byte = 16
+        self.pellet_byte = 119
 
         # Level tracking
         self.current_episode_level = 0          # resets each episode, max 8
@@ -95,20 +96,20 @@ class MetricsWrapper(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         
         # Store position (from RAM)
-        x = int(obs[x_byte])
-        y = int(obs[y_byte])
+        x = int(obs[self.x_byte])
+        y = int(obs[self.y_byte])
         self.episode_positions.append((x, y))
         
         self.episode_steps += 1
 
-        current_119 = int(obs[pellet_byte])
+        current_119 = int(obs[self.pellet_byte])
        
         # If self.pellet_byte == 0 indicates level start. 
         if current_119 == 0 and self.past_119 != 0:
             self.current_level += 1
 
         # If 119 changed == pellet eaten
-        if current_119 - self.past_119 == 1
+        if current_119 - self.past_119 == 1:
             self.pellets_eaten += 1
             self.past_119 = current_119
             
