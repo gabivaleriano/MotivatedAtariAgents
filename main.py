@@ -31,8 +31,8 @@ def main():
                        help='Number of evaluation episodes')
     parser.add_argument('--clip_rewards', action='store_true', default=False,
                    help='Clip rewards to -1, 0, 1')
-    parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['Vanilla', 'Hull'],
-                       choices = ['Vanilla', 'Hull', 'Want_like', 'Incentive'],
+    parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['Vanilla', 'Hull', 'WantLike'],
+                       choices = ['Vanilla', 'Hull', 'WantLike', 'Incentive'],
                        help='List with agents to be trained. Options: Vanilla, Hull, Want_like, Incentive')
     
     # Output settings
