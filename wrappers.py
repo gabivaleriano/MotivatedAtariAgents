@@ -319,9 +319,22 @@ class WantLikeWrapper(gym.Wrapper):
         old_drive = self.D
         self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)
 
+        # without desliking for being above homeostase  
+
+        # if it is under homeosthasis (old drive < 30) compute in both directions, like for increasing, dislike decreasing
         if old_drive < self.D_star: Ril = (self.D - old_drive)/self.D_star # positive if D increased and negative otherwise
-        elif old_drive == self.D_star: Ril = -(abs(self.D - old_drive)/self.D_star) # penalizes any direction
-        else: Ril = (old_drive - self.D)/self.D_star                     # positive if D decrease and negative otherwise         
+
+        # if old drive wan on homeosthasis
+        elif old_drive == self.D_star: 
+            # dislike if decreasing 
+            if self.D < self.D_star: Ril = (self.D - old_drive)/self.D_star 
+            # reduced like if decreasing (still like eating, but less pleasure) 
+            else: Ril = (old_drive - self.D)/(self.D_star + self.D)  
+
+        # still like eating, but reducing... does not deslike 
+        else: 
+            if self.D > old_drive: Ril = (self.D - old_drive)/(self.D_star + self.D)
+            else: Ril = 0 #there is not like or dislike 
 
         # 3. compute intrinsic reward
         if self.D < self.D_star:
