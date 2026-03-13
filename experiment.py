@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 from dqn import DQN_RAM
 from environment import make_env_with_metrics
-from utils import ReplayBuffer, set_seed 
+from utils import ReplayBuffer, set_seed, compute_directional_pellet_salience
 
 # Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -69,7 +69,18 @@ def train_with_seed(env_name,
         else:
             with torch.no_grad():
                 q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
-                a = q.argmax(1).item()
+                q_values = q.squeeze(0).cpu().numpy()        
+    
+            if agent_style == 'Incentive':
+                kappa = compute_kappa(info.get('kappa', None))
+                if kappa is not None and kappa > 0:
+                    px, py = int(state[10]), int(state[16])
+                    eaten = info.get('eaten_pellet_positions', set())
+                    traversable = info.get('traversable_positions', set())
+                    C = compute_directional_pellet_salience(px, py, traversable, eaten)
+                    q_values = q_values + kappa * C
+            
+            a = int(np.argmax(q_values))                  
         
         # Environment step
         ns, r, term, trunc, info = env.step(a)
@@ -90,9 +101,13 @@ def train_with_seed(env_name,
                 metrics['timestep'] = t
                 metrics['seed'] = seed
                 
-                if agent_style == 'Hull':      # ← inside the block ✓
-                    metrics['want_total'] = info["episode"].get("want", 0)
+                if agent_style == 'Hull':
+                    metrics['intrinsic_total'] = info["episode"].get("intrinsic_total", 0)  
                     metrics['step_history'] = info["episode"].get("step_history", {})
+                    # ratio to compare intrinsic vs extrinsic magnitude
+                    ext = metrics['external_reward']
+                    intr = metrics['intrinsic_total']
+                    metrics['intrinsic_extrinsic_ratio'] = intr / ext if ext != 0 else 0
                 
                 all_metrics.append(metrics)
             
