@@ -82,7 +82,6 @@ class MetricsWrapper(gym.Wrapper):
         self.past_119 = 0                       # past value of byte 119 - pellets
         self.x_byte = 10
         self.y_byte = 16
-        self.pellet_byte = 119
 
         # Level tracking
         self.current_episode_level = 0          # resets each episode, max 8
@@ -118,14 +117,14 @@ class MetricsWrapper(gym.Wrapper):
 
         current_119 = int(obs[119])
        
-        # If self.pellet_byte == 0 indicates level start. 
         if current_119 == 0 and self.past_119 != 0:
             self.current_episode_level += 1
 
         # If 119 changed == pellet eaten
         if current_119 - self.past_119 == 1:
-            self.pellets_eaten += 1
-            self.past_119 = current_119
+            self.pellets_eaten += 1   
+            
+        self.past_119 = current_119
         
         # Calculate metrics at episode end
         if terminated or truncated:
@@ -232,7 +231,7 @@ class HullWrapper(gym.Wrapper):
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +1
+            energy_delta = +2
 
         self.prev_pos = curr_pos            
 
