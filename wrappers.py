@@ -223,16 +223,16 @@ class HullWrapper(gym.Wrapper):
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
 
+        
+
         curr_pos = (int(obs[10]), int(obs[16]))   # x_byte=10, y_byte=16
         current_119 = int(obs[119])
 
+        energy_delta = -0.4
+
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +2
-        elif curr_pos != self.prev_pos:
-            energy_delta = -0.4
-        else:
-            energy_delta = -0.2
+            energy_delta = +1
 
         self.prev_pos = curr_pos            
 
@@ -248,6 +248,7 @@ class HullWrapper(gym.Wrapper):
         self.episode_intrinsic_total += Ri            # ← accumulate
         self.step_history['drive'].append(self.D)
         self.step_history['Ri'].append(Ri) 
+        self.past_119 = current_119
 
         if terminated or truncated:
             if "episode" not in info:
