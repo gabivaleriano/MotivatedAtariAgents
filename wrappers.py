@@ -208,9 +208,8 @@ class MetricsWrapper(gym.Wrapper):
 
 class HullWrapper(gym.Wrapper):
     
-    def __init__(self, env, raw_tracker=None):
+    def __init__(self, env):
         super().__init__(env)
-        self.raw_tracker = raw_tracker
         self.D = 30          # start at homeostasis
         self.D_star = 30     # homeostasis level
         self.D_max = 50
@@ -219,20 +218,21 @@ class HullWrapper(gym.Wrapper):
         self.current_episode = 0
         self.step_history = {'drive': [], 'Ri': []}  # ← add Ri
         self.episode_intrinsic_total = 0.0
+        self.past_119 = 0
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
 
         curr_pos = (int(obs[10]), int(obs[16]))   # x_byte=10, y_byte=16
+        current_119 = int(obs[119])
 
         # 1. detect eating first (takes priority)
-        raw_reward = self.raw_tracker.last_raw_reward if self.raw_tracker else 0
-        if raw_reward in [10, 50, 200, 400, 800, 1600]:
-            energy_delta = +3
+        if current_119 != self.past_119:
+            energy_delta = +5
         elif curr_pos != self.prev_pos:
-            energy_delta = -2
+            energy_delta = -0.5
         else:
-            energy_delta = -1
+            energy_delta = -0.2
 
         self.prev_pos = curr_pos            
 
@@ -268,6 +268,7 @@ class HullWrapper(gym.Wrapper):
         self.prev_pos = (85, 98)
         self.step_history = {'drive': [], 'Ri': []}   # ← reset both
         self.episode_intrinsic_total = 0.0  
+        self.past_119 = 0
         
         obs, info = self.env.reset(**kwargs)
         self.current_episode += 1
