@@ -116,7 +116,7 @@ class MetricsWrapper(gym.Wrapper):
         
         self.episode_steps += 1
 
-        current_119 = int(obs[self.pellet_byte])
+        current_119 = int(obs[119])
        
         # If self.pellet_byte == 0 indicates level start. 
         if current_119 == 0 and self.past_119 != 0:
@@ -228,9 +228,9 @@ class HullWrapper(gym.Wrapper):
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +5
+            energy_delta = +2
         elif curr_pos != self.prev_pos:
-            energy_delta = -0.5
+            energy_delta = -0.4
         else:
             energy_delta = -0.2
 
