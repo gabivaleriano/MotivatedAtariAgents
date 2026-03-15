@@ -21,6 +21,9 @@ class RestrictActionsWrapper(gym.Wrapper):
         # map restricted action to original action space
         real_action = self.valid_actions[action]
         return self.env.step(real_action)
+   
+    def reset(self, **kwargs):
+        return self.env.reset(**kwargs)
 
 class RawRewardTracker(gym.Wrapper):
     """Track raw rewards before any transformation"""
@@ -69,23 +72,18 @@ class MetricsWrapper(gym.Wrapper):
     
     def __init__(self, env, raw_tracker=None):
         super().__init__(env)
-        x_byte = 10
-        y_byte = 16
-        pellet_byte = 119
-
         self.raw_tracker = raw_tracker
         
         # Episode tracking
         self.episode_positions = []
         self.episode_steps = 0
         self.pellets_eaten = 0
-        self.past_119 = 0                       # past value of byte 119 - pellets
-        self.x_byte = 10
-        self.y_byte = 16
-
+        
         # Level tracking
         self.current_episode_level = 0          # resets each episode, max 8
-
+        self.level_started = False
+        self.past_119 = 0    
+        self.total_levels_completed = 0
         
     def reset(self, **kwargs):
         """Reset episode tracking"""
@@ -94,14 +92,10 @@ class MetricsWrapper(gym.Wrapper):
         self.episode_steps = 0
         self.pellets_eaten = 0      # add this
         self.past_119 = 0    
-        self.current_episode_level = 0    
-        
-        # Get RAM state
-        if isinstance(obs, tuple): # if obs is a tuple like (array, dict
-            ram_state = obs[0] # grab just the first element (the array)
-        else:
-            ram_state = obs
-        
+        self.total_levels_completed = 0
+        self.current_episode_level = 0
+        self.level_started = False
+               
         return obs
     
     def step(self, action):
@@ -109,16 +103,25 @@ class MetricsWrapper(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         
         # Store position (from RAM)
-        x = int(obs[self.x_byte])
-        y = int(obs[self.y_byte])
+        x = int(obs[10])
+        y = int(obs[16])
         self.episode_positions.append((x, y))
         
         self.episode_steps += 1
 
         current_119 = int(obs[119])
+
+        if current_119 > 0:
+            self.level_started = True
+
+        # level transition: byte resets to 0 AFTER pellets were seen
+        if current_119 == 0 and self.level_started:
+            self.total_levels_completed += 1  # just keep counting, useful metric
+            self.current_episode_level = self.total_levels_completed % 8  # 0-7 cycling
+            self.level_started = False  # wait for next level's pellets
        
-        if current_119 == 0 and self.past_119 != 0:
-            self.current_episode_level += 1
+        #if current_119 == 0 and self.past_119 != 0:
+            #self.current_episode_level += 1
 
         # If 119 changed == pellet eaten
         if current_119 - self.past_119 == 1:
@@ -194,12 +197,12 @@ class MetricsWrapper(gym.Wrapper):
             'pellet_efficiency': pellet_efficiency,
             'ghost_eating_efficiency': ghost_efficiency,
             'backtracking_rate': backtrack_rate,
-            'level_reached': self.current_episode_level,
+            'level_reached': self.total_levels_completed,
             'external_reward': external_reward,
             'pellets_eaten': pellets_eaten,
             'power_pellets_eaten': power_pellets_eaten,
             'ghosts_eaten': ghosts_eaten,
-        }
+        }        
 
 
 # In[ ]:
@@ -213,7 +216,7 @@ class HullWrapper(gym.Wrapper):
         self.D_star = 30     # homeostasis level
         self.D_max = 50
         self.D_min = 0
-        self.prev_pos = (85, 98)
+        #self.prev_pos = (85, 98)
         self.current_episode = 0
         self.step_history = {'drive': [], 'Ri': []}  # ← add Ri
         self.episode_intrinsic_total = 0.0
@@ -221,19 +224,16 @@ class HullWrapper(gym.Wrapper):
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
-
-        
-
-        curr_pos = (int(obs[10]), int(obs[16]))   # x_byte=10, y_byte=16
+        #curr_pos = (int(obs[10]), int(obs[16]))   # x_byte=10, y_byte=16
         current_119 = int(obs[119])
 
         energy_delta = -0.4
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +2
+            energy_delta = +4
 
-        self.prev_pos = curr_pos            
+        #self.prev_pos = curr_pos            
 
         # 2. update drive
         self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)
@@ -260,12 +260,11 @@ class HullWrapper(gym.Wrapper):
         
         return obs, reward, terminated, truncated, info
 
-
     def reset(self, **kwargs):
        
         # Reset episode-level trackers
         self.D = self.D_star          
-        self.prev_pos = (85, 98)
+        #self.prev_pos = (85, 98)
         self.step_history = {'drive': [], 'Ri': []}   # ← reset both
         self.episode_intrinsic_total = 0.0  
         self.past_119 = 0
@@ -297,7 +296,114 @@ class CombineRewardWrapper(gym.Wrapper):
 # In[ ]:
 
 
-class WantLikeWrapper(gym.Wrapper):
+class OldWantLikeWrapper(gym.Wrapper):
+# sem tolerância
+    
+    def __init__(self, env, raw_tracker=None):
+        super().__init__(env)
+        self.D = 30          # start at homeostasis
+        self.D_star = 30     # homeostasis level
+        self.D_max = 50
+        self.D_min = 0
+
+        # Step-level tracking (history within episode)
+        self.current_episode = 0
+        self.step_history = {'drive': [], 'Riw': [], 'Ril': []}          
+        self.episode_intrinsic_total = 0.0
+        self.past_119 = 0
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        current_119 = int(obs[119])
+
+        energy_delta = -0.4
+
+        # 1. detect eating first (takes priority)
+        if current_119 != self.past_119:
+            energy_delta = +2 
+
+        # 2. update drive
+        old_drive = self.D
+        self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)
+          
+        # without desliking for being above homeostase  
+
+        # if it is under homeosthasis (old drive < 30) compute in both directions, like for increasing, dislike decreasing
+        if old_drive < self.D_star: Ril = (self.D - old_drive)/self.D_star # positive if D increased and negative otherwise
+
+        # if old drive was on homeosthasis
+        elif old_drive == self.D_star: 
+            # dislike if decreasing 
+            if self.D < self.D_star: Ril = (self.D - old_drive)/self.D_star 
+            # reduced like if increasing (still like eating, but less pleasure) 
+            else: Ril = (old_drive - self.D)/(self.D_star + self.D)  
+
+        # still like eating, but reducing... does not deslike 
+        else: 
+            if self.D > old_drive: Ril = (self.D - old_drive)/(self.D_star + self.D)
+            else: Ril = 0 #there is not like or dislike 
+
+        # 3. compute intrinsic reward
+        if self.D < self.D_star:
+            Riw = -((self.D_star - self.D) / self.D_star) ** 2
+        else:
+            Riw = (self.D - self.D_star) / self.D_star  # note: no penalty per spec
+
+        Ri = Riw + Ril
+
+        self.step_history['drive'].append(self.D)
+        self.step_history['Riw'].append(Riw)
+        self.step_history['Ril'].append(Ril)
+
+        if terminated or truncated:
+            if "episode" not in info:
+                info["episode"] = {}
+            info["episode"]["step_history"] = self.step_history.copy()
+        
+        # Keep ONLY this one - CombineRewardWrapper needs it
+        info["want_reward"] = Riw
+        info["like_reward"] = Ril
+        
+        return obs, reward, terminated, truncated, info
+
+    def reset(self, **kwargs):
+       
+        # Reset episode-level trackers
+        self.D = 30          # start at homeostasis
+        self.prev_pos = (85, 98)
+
+        # Step-level tracking (history within episode)
+        self.step_history = {'drive': [], 'Riw': [], 'Ril': []} 
+        
+        obs, info = self.env.reset(**kwargs)
+        self.current_episode += 1
+        
+        return obs, info     
+
+class CombineRewardWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+    def step(self, action):
+        obs, reward, term, trunc, info = self.env.step(action)
+        
+        # collect whatever intrinsic rewards are present
+        intrinsic_keys = ["drive_reward", "want_reward", "like_reward"]
+        intrinsic = sum(info.get(k, 0.0) for k in intrinsic_keys)
+        
+        total = reward + intrinsic
+        
+        info["extrinsic_reward"] = reward
+        info["intrinsic_reward"] = intrinsic
+        info["total_reward"] = total
+        
+        return obs, total, term, trunc, info
+
+
+# In[ ]:
+
+
+class OldWantLikeWrapper(gym.Wrapper):
 # sem tolerância
     
     def __init__(self, env, raw_tracker=None):

@@ -13,7 +13,7 @@ import gymnasium as gym
 import numpy as np
 
 from gymnasium.wrappers import TransformReward, RecordEpisodeStatistics
-from wrappers import CombineRewardWrapper, HullWrapper, MetricsWrapper, RawRewardTracker, WantLikeWrapper
+from wrappers import CombineRewardWrapper, HullWrapper, MetricsWrapper, RawRewardTracker, RestrictActionsWrapper
 
 gym.register_envs(ale_py)
 
@@ -28,6 +28,7 @@ def make_env_with_metrics(name,
                    obs_type="ram" if use_ram else "rgb",
                    frameskip=4)
 
+    env = RestrictActionsWrapper(env)
     env = RawRewardTracker(env)
     raw_tracker = env
     
