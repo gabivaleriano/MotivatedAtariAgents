@@ -13,7 +13,7 @@ import gymnasium as gym
 import numpy as np
 
 from gymnasium.wrappers import TransformReward, RecordEpisodeStatistics
-from wrappers import CombineRewardWrapper, HullWrapper, MetricsWrapper, RawRewardTracker, RestrictActionsWrapper
+from wrappers import CombineRewardWrapper, HullWrapper, MetricsWrapper, RawRewardTracker, RestrictActionsWrapper, WantLikeWrapper
 
 gym.register_envs(ale_py)
 
