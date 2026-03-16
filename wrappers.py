@@ -299,7 +299,6 @@ class CombineRewardWrapper(gym.Wrapper):
 
 
 class WantLikeWrapper(gym.Wrapper):
-# sem tolerância
     
     def __init__(self, env, raw_tracker=None):
         super().__init__(env)
@@ -395,6 +394,28 @@ class CombineRewardWrapper(gym.Wrapper):
 
     def step(self, action):
         obs, reward, term, trunc, info = self.env.step(action)
+
+        Riw = info.get("want_reward", 0.0)
+        Ril = info.get("like_reward", 0.0)
+        intrinsic = Riw + Ril
+
+        total = reward + intrinsic
+
+        info["extrinsic_reward"] = reward
+        info["want_reward"]      = Riw
+        info["like_reward"]      = Ril
+        info["intrinsic_reward"] = intrinsic
+        info["total_reward"]     = total
+
+        return obs, total, term, trunc, info
+
+'''
+class CombineRewardWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+    def step(self, action):
+        obs, reward, term, trunc, info = self.env.step(action)
         
         # collect whatever intrinsic rewards are present
         intrinsic_keys = ["drive_reward", "want_reward", "like_reward"]
@@ -407,6 +428,7 @@ class CombineRewardWrapper(gym.Wrapper):
         info["total_reward"] = total
         
         return obs, total, term, trunc, info
+'''
 
 
 # In[ ]:
