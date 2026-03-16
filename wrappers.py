@@ -227,13 +227,15 @@ class HullWrapper(gym.Wrapper):
         #curr_pos = (int(obs[10]), int(obs[16]))   # x_byte=10, y_byte=16
         current_119 = int(obs[119])
 
-        energy_delta = -0.4
+        energy_delta = -0.5
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +4
+            energy_delta = +10
 
-        #self.prev_pos = curr_pos            
+        # in HullWrapper.step()
+        #if self.current_episode > 9990:
+            #print(f"step={self.current_episode} | 119={current_119} | past={self.past_119} | delta={energy_delta} | D={self.D:.1f}", flush=True)
 
         # 2. update drive
         self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)
@@ -296,7 +298,7 @@ class CombineRewardWrapper(gym.Wrapper):
 # In[ ]:
 
 
-class OldWantLikeWrapper(gym.Wrapper):
+class WantLikeWrapper(gym.Wrapper):
 # sem tolerância
     
     def __init__(self, env, raw_tracker=None):
@@ -316,11 +318,13 @@ class OldWantLikeWrapper(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         current_119 = int(obs[119])
 
-        energy_delta = -0.4
+        energy_delta = -0.5
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +2 
+            energy_delta = +10 
+
+        self.past_119 = current_119
 
         # 2. update drive
         old_drive = self.D
@@ -351,6 +355,8 @@ class OldWantLikeWrapper(gym.Wrapper):
 
         Ri = Riw + Ril
 
+        self.episode_intrinsic_total += Ri
+
         self.step_history['drive'].append(self.D)
         self.step_history['Riw'].append(Riw)
         self.step_history['Ril'].append(Ril)
@@ -359,6 +365,7 @@ class OldWantLikeWrapper(gym.Wrapper):
             if "episode" not in info:
                 info["episode"] = {}
             info["episode"]["step_history"] = self.step_history.copy()
+            info["episode"]["intrinsic_total"] = self.episode_intrinsic_total
         
         # Keep ONLY this one - CombineRewardWrapper needs it
         info["want_reward"] = Riw
@@ -370,13 +377,15 @@ class OldWantLikeWrapper(gym.Wrapper):
        
         # Reset episode-level trackers
         self.D = 30          # start at homeostasis
-        self.prev_pos = (85, 98)
+        self.past_119 = 0
 
         # Step-level tracking (history within episode)
         self.step_history = {'drive': [], 'Riw': [], 'Ril': []} 
+        self.episode_intrinsic_total = 0
         
         obs, info = self.env.reset(**kwargs)
         self.current_episode += 1
+        
         
         return obs, info     
 
