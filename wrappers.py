@@ -409,56 +409,66 @@ class IncentiveWrapper(gym.Wrapper):
         self.past_119 = 0
         # track everywhere Pac-Man has actually been
         self.traversable_positions = set()
+        self.episode_intrinsic_total = 0
         
 
         # Step-level tracking (history within episode)
         self.current_episode = 0
-        self.step_history = {'drive': [], 'Riw': [], 'Ril': []}
+        self.step_history = {'drive': [], 'kappa': [], 'Ril': []}
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
 
         curr_pos = (int(obs[10]), int(obs[16]))   # x_byte=10, y_byte=16
-        self.traversable_positions.add((obs[10], obs[16]))
+        
+        if curr_pos not in self.traversable_positions:
+            self.traversable_positions.add(curr_pos)
 
         # 1. detect eating first (takes priority)
-        raw_reward = self.raw_tracker.last_raw_reward if self.raw_tracker else 0
-        if raw_reward in [10, 50, 200, 400, 800, 1600]:
-            energy_delta = +3
-            Ril = 1 
-        elif curr_pos != self.prev_pos:
-            energy_delta = -2
-        else:
-            energy_delta = -1
+        energy_delta = -0.5
 
-        self.prev_pos = curr_pos            
+        current_119 = int(obs[119])
 
-        # 2. update drive and like
+        Ril = 0
+
+        # 1. detect eating first (takes priority)
+        if current_119 != self.past_119:
+            energy_delta = +10 
+            Ril = 0.5
+            self.eaten_pellet_positions.add(curr_pos)
+
+        self.past_119 = current_119
+
+        # 2. update drive
         old_drive = self.D
-        self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max) 
+        self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)       
 
-        if D < D_star:
-            self.kappa = 1 + (D_star - D) / D_star  # in [0, 1]
+        if self.D < self.D_star:
+            self.kappa = 1 + (self.D_star - self.D) / self.D_star  # in [0, 1]
         else:
-            self.kappa = 1  # well-fed, no salience amplification
+            self.kappa = 1  # well-fed, no salience amplificatiom            
 
         Ri = Ril
 
-        if current_119 - self.past_119 == 1:
-            self.eaten_pellet_positions.add(curr_pos)
-        self.past_119 = current_119
-        
+        self.episode_intrinsic_total += Ri        
         self.step_history['drive'].append(self.D)
         self.step_history['kappa'].append(self.kappa)
         self.step_history['Ril'].append(Ril)
-        info["eaten_pellet_positions"] = self.eaten_pellet_positions
-        info["traversable_positions"] = self.traversable_positions
-        info["pacman_pos"] = curr_pos
+
 
         if terminated or truncated:
             if "episode" not in info:
                 info["episode"] = {}
             info["episode"]["step_history"] = self.step_history.copy()
+            info["episode"]["intrinsic_total"] = self.episode_intrinsic_total
+
+        info["eaten_pellet_positions"] = self.eaten_pellet_positions
+        info["traversable_positions"] = self.traversable_positions
+        info["pacman_pos"] = curr_pos
+
+        # Combine rewards
+        info["like_reward"] = Ril
+        info["kappa"] = self.kappa
                
         return obs, reward, terminated, truncated, info
 
@@ -467,7 +477,6 @@ class IncentiveWrapper(gym.Wrapper):
        
         # Reset episode-level trackers
         self.D = 30          # start at homeostasis
-        self.prev_pos = (85, 98)
         self.kappa = 1
         self.eaten_pellet_positions = set()
         self.past_119 = 0

@@ -81,7 +81,7 @@ def compute_directional_pellet_salience(pacman_x, pacman_y, traversable_position
             # discount further positions
             discount = 1.0 / step
             
-            if pos in self.traversable_positions and pos not in self.eaten_pellet_positions:
+            if pos in traversable_positions and pos not in eaten_pellet_positions:
                 pellet_score += discount  # uneaten → attractive
         
         C[i] = pellet_score

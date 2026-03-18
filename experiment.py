@@ -54,6 +54,7 @@ def train_with_seed(env_name,
     eps = lambda t: 0.1 + 0.9 * np.exp(-t / 500000)
     
     state, _ = env.reset()
+    info = {}
     
     # Metrics storage
     all_metrics = []
@@ -61,26 +62,42 @@ def train_with_seed(env_name,
     episode_count = 0
     
     bar = tqdm(total=total_steps, desc=f"Seed {seed}")
+
+    # Metrics storage
+    episode_q_before = []   # q values before kappa adjustment
+    episode_q_after  = []   # q values after kappa adjustment  
+    episode_C_values = []   # directional salience values
     
     for t in range(1, total_steps + 1):
         # Epsilon-greedy action selection
         if random.random() < eps(t):
             a = env.action_space.sample()
+
+            episode_q_before.append(None)
+            episode_q_after.append(None)
+            episode_C_values.append(None)
         else:
             with torch.no_grad():
                 q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
                 q_values = q.squeeze(0).cpu().numpy()        
-    
+
+            q_before = q_values.copy()   # snapshot before any adjustment 
+            C = None
             if agent_style == 'Incentive':
-                kappa = compute_kappa(info.get('kappa', None))
-                if kappa is not None and kappa > 0:
+                kappa = info.get('kappa', None)
+                if kappa is not None and kappa > 0: # vai calcular o valor da cue
                     px, py = int(state[10]), int(state[16])
                     eaten = info.get('eaten_pellet_positions', set())
                     traversable = info.get('traversable_positions', set())
                     C = compute_directional_pellet_salience(px, py, traversable, eaten)
                     q_values = q_values + kappa * C
+
+            episode_q_before.append(q_before)
+            episode_q_after.append(q_values.copy())
+            episode_C_values.append(C)
             
-            a = int(np.argmax(q_values))                  
+            a = int(np.argmax(q_values))   
+            
         
         # Environment step
         ns, r, term, trunc, info = env.step(a)
@@ -101,7 +118,7 @@ def train_with_seed(env_name,
                 metrics['timestep'] = t
                 metrics['seed'] = seed
                 
-                if agent_style == 'Hull':
+                if agent_style == 'Hull' or agent_style == 'WantLike' or agent_style == 'Incentive':
                     metrics['intrinsic_total'] = info["episode"].get("intrinsic_total", 0)  
                     metrics['step_history'] = info["episode"].get("step_history", {})
                     # ratio to compare intrinsic vs extrinsic magnitude
@@ -109,15 +126,17 @@ def train_with_seed(env_name,
                     intr = metrics['intrinsic_total']
                     metrics['intrinsic_extrinsic_ratio'] = intr / ext if ext != 0 else 0
 
-                if agent_style == 'WantLike':
-                    metrics['intrinsic_total'] = info["episode"].get("intrinsic_total", 0)  
-                    metrics['step_history'] = info["episode"].get("step_history", {})
-                    # ratio to compare intrinsic vs extrinsic magnitude
-                    ext = metrics['external_reward']
-                    intr = metrics['intrinsic_total']
-                    metrics['intrinsic_extrinsic_ratio'] = intr / ext if ext != 0 else 0
-                
+                if agent_style == 'Incentive':
+                    metrics['q_before']  = episode_q_before.copy()
+                    metrics['q_after']   = episode_q_after.copy()
+                    metrics['C_values']  = episode_C_values.copy()
+
                 all_metrics.append(metrics)
+
+            # Reset episode-level buffers
+            episode_q_before.clear()
+            episode_q_after.clear()
+            episode_C_values.clear()
             
             episode_count += 1
             state, _ = env.reset()
