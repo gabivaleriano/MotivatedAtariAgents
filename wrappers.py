@@ -119,11 +119,7 @@ class MetricsWrapper(gym.Wrapper):
             self.total_levels_completed += 1  # just keep counting, useful metric
             self.current_episode_level = self.total_levels_completed % 8  # 0-7 cycling
             self.level_started = False  # wait for next level's pellets
-       
-        #if current_119 == 0 and self.past_119 != 0:
-            #self.current_episode_level += 1
 
-        # If 119 changed == pellet eaten
         if current_119 - self.past_119 == 1:
             self.pellets_eaten += 1   
             
@@ -486,6 +482,7 @@ class IncentiveWrapper(gym.Wrapper):
         
         obs, info = self.env.reset(**kwargs)
         self.current_episode += 1
+        self.episode_intrinsic_total = 0
         
         return obs, info  
 
