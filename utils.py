@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 """
@@ -59,9 +59,10 @@ def compute_directional_pellet_salience(pacman_x, pacman_y, traversable_position
     directions = [(0, 0), (0, -1), (1, 0), (-1, 0), (0, 1)]
     
     # Ms. Pac-Man maze approximate bounds
-    X_MIN, X_MAX = 0, 160 # CONFIRAR NA RAM ESSES VALORES 
-    Y_MIN, Y_MAX = 0, 210
-    STEP_SIZE = 2  # approximate pixels per step (alternate 2 and 3)
+    X_MIN, X_MAX = 13, 170
+    Y_MIN, Y_MAX = 2, 158
+    STEP_H = 2.5   # horizontal: alternates 2 and 3
+    STEP_V = 3.5   # vertical: alternates 3 and 4
     
     C = np.zeros(n_actions)
     
@@ -69,22 +70,30 @@ def compute_directional_pellet_salience(pacman_x, pacman_y, traversable_position
         if dx == 0 and dy == 0:  # noop
             C[i] = 0.0
             continue
-        
+
+        step_size = STEP_H if dx != 0 else STEP_V
         pellet_score = 0.0
         for step in range(1, n_steps + 1):
-            # circular wrapping for maze tunnels (left-right wrap)
-            next_x = (pacman_x + dx * STEP_SIZE * step - X_MIN) % (X_MAX - X_MIN) + X_MIN # só estou na dúvida do stepsize 
-            next_y = np.clip(pacman_y + dy * STEP_SIZE * step, Y_MIN, Y_MAX)  # no vertical wrap - clip pq não passa dos limites
-            
+            next_x = (pacman_x + dx * step_size * step - X_MIN) % (X_MAX - X_MIN) + X_MIN
+            next_y = np.clip(pacman_y + dy * step_size * step, Y_MIN, Y_MAX)
             pos = (int(next_x), int(next_y))
-            
-            # discount further positions
+        
+            if pos not in traversable_positions:
+                break  # wall hit, stop projecting in this direction
+        
             discount = 1.0 / step
             
-            if pos in traversable_positions and pos not in eaten_pellet_positions:
-                pellet_score += discount  # uneaten → attractive
+            # check within a small radius (e.g. 2 pixels)
+            if pos not in eaten_pellet_positions:
+                pellet_score += discount
         
         C[i] = pellet_score
     
     return C
+
+
+# In[ ]:
+
+
+
 

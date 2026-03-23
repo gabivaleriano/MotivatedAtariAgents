@@ -2,3 +2,9 @@ __pycache__/
 .ipynb_checkpoints/
 *.pyc
 *.ipynb
+results/
+hull/
+incentive/
+wl/
+vanilla/
+.pkl
