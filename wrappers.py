@@ -42,11 +42,11 @@ class RawRewardTracker(gym.Wrapper):
     def reset(self, **kwargs):
         """Reset episode tracking"""
 
-        # Save episode history before reset
-        if len(self.episode_raw_rewards) > 0:
+        if self.episode_raw_rewards:
             self.episode_history['extrinsic_total'].append(self.episode_raw_rewards)
-            self.episode_raw_rewards = []
-            self.cumulative_raw_reward = 0
+        self.episode_raw_rewards = []
+        self.cumulative_raw_reward = 0
+        self.last_raw_reward = 0
             
         return self.env.reset(**kwargs)
     
@@ -84,6 +84,8 @@ class MetricsWrapper(gym.Wrapper):
         self.level_started = False
         self.past_119 = 0    
         self.total_levels_completed = 0
+        self.x_position = 0
+        self.y_position = 0
         
     def reset(self, **kwargs):
         """Reset episode tracking"""
@@ -92,7 +94,6 @@ class MetricsWrapper(gym.Wrapper):
         self.episode_steps = 0
         self.pellets_eaten = 0      # add this
         self.past_119 = 0    
-        self.total_levels_completed = 0
         self.current_episode_level = 0
         self.level_started = False
                
@@ -120,10 +121,12 @@ class MetricsWrapper(gym.Wrapper):
             self.current_episode_level = self.total_levels_completed % 8  # 0-7 cycling
             self.level_started = False  # wait for next level's pellets
 
-        if current_119 - self.past_119 == 1:
+        if current_119 > self.past_119:
             self.pellets_eaten += 1   
             
         self.past_119 = current_119
+        self.x_position = x
+        self.y_position = y
         
         # Calculate metrics at episode end
         if terminated or truncated:
@@ -160,7 +163,7 @@ class MetricsWrapper(gym.Wrapper):
                 frightened_timer = 0
             
             # Count ghosts (unambiguous rewards)
-            if r in [400, 800, 1600]:
+            if r in [400, 800, 1600, 3200]:
                 ghosts_eaten += 1
             # For 200 points, only count during frightened mode
             elif r == 200 and frightened_mode:
@@ -198,6 +201,8 @@ class MetricsWrapper(gym.Wrapper):
             'pellets_eaten': pellets_eaten,
             'power_pellets_eaten': power_pellets_eaten,
             'ghosts_eaten': ghosts_eaten,
+            'x_position': self.x_position,
+            'y_position': self.y_position
         }        
 
 
@@ -324,7 +329,7 @@ class WantLikeWrapper(gym.Wrapper):
         else: 
             if self.D > old_drive: Ril = (self.D - old_drive)/(self.D_star + self.D)
             else: Ril = 0 #there is not like or dislike 
-
+ 
         # 3. compute intrinsic reward
         if self.D < self.D_star:
             Riw = -((self.D_star - self.D) / self.D_star) ** 2
