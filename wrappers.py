@@ -25,6 +25,26 @@ class RestrictActionsWrapper(gym.Wrapper):
     def reset(self, **kwargs):
         return self.env.reset(**kwargs)
 
+class LifeLossWrapper(gym.Wrapper):
+    """Terminate episode when a life is lost (RAM byte 123 tracks lives)."""
+    
+    LIVES_RAM_BYTE = 123  # 0x7B — starts at 2 for Pac-Man
+    
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        self._lives = obs[self.LIVES_RAM_BYTE]
+        return obs, info
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        current_lives = obs[self.LIVES_RAM_BYTE]
+        
+        if current_lives < self._lives:
+            truncated = True  # use truncated, not terminated — the game isn't over
+        
+        self._lives = current_lives
+        return obs, reward, terminated, truncated, info
+
 class RawRewardTracker(gym.Wrapper):
     """Track raw rewards before any transformation"""
     
@@ -63,7 +83,7 @@ class RawRewardTracker(gym.Wrapper):
         # Add to info at episode end
         if terminated or truncated:
             info['raw_episode_return'] = self.cumulative_raw_reward
-            info['raw_rewards_list'] = self.episode_raw_rewards.copy()
+            #info['raw_rewards_list'] = self.episode_raw_rewards.copy()
 
         return obs, reward, terminated, truncated, info
 
@@ -84,8 +104,6 @@ class MetricsWrapper(gym.Wrapper):
         self.level_started = False
         self.past_119 = 0    
         self.total_levels_completed = 0
-        self.x_position = 0
-        self.y_position = 0
         
     def reset(self, **kwargs):
         """Reset episode tracking"""
@@ -125,14 +143,12 @@ class MetricsWrapper(gym.Wrapper):
             self.pellets_eaten += 1   
             
         self.past_119 = current_119
-        self.x_position = x
-        self.y_position = y
         
         # Calculate metrics at episode end
         if terminated or truncated:
             raw_rewards = self.raw_tracker.episode_raw_rewards.copy() if self.raw_tracker else []
             metrics = self.calculate_metrics(raw_rewards)
-            metrics['raw_rewards_list'] = raw_rewards               
+            #metrics['raw_rewards_list'] = raw_rewards               
             metrics['raw_episode_return'] = sum(raw_rewards) if raw_rewards else 0  
             info['metrics'] = metrics
         
@@ -197,13 +213,42 @@ class MetricsWrapper(gym.Wrapper):
             'ghost_eating_efficiency': ghost_efficiency,
             'backtracking_rate': backtrack_rate,
             'level_reached': self.total_levels_completed,
-            'external_reward': external_reward,
             'pellets_eaten': pellets_eaten,
             'power_pellets_eaten': power_pellets_eaten,
             'ghosts_eaten': ghosts_eaten,
-            'x_position': self.x_position,
-            'y_position': self.y_position
         }        
+
+
+# In[ ]:
+
+
+class VanillaPositionWrapper(gym.Wrapper):
+    
+    def __init__(self, env):
+        super().__init__(env)        
+        self.step_history = {'x_position': [], 'y_position': [], 'transformed_reward': []} 
+
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        x_position = int(obs[10])
+        y_position = int(obs[16])
+
+        self.step_history['x_position'].append(x_position)
+        self.step_history['y_position'].append(y_position)
+        self.step_history['transformed_reward'].append(reward) 
+        
+        if terminated or truncated:
+            if "episode" not in info:
+                info["episode"] = {}
+            info["episode"]["step_history"] = self.step_history.copy()
+        
+        return obs, reward, terminated, truncated, info
+
+    def reset(self, **kwargs):
+        self.step_history = {'x_position': [], 'y_position': [], 'transformed_reward': []}           
+        obs, info = self.env.reset(**kwargs)        
+        return obs, info    
 
 
 # In[ ]:
@@ -219,23 +264,21 @@ class HullWrapper(gym.Wrapper):
         self.D_min = 0
         
         self.current_episode = 0
-        self.step_history = {'drive': [], 'Ri': []}  # ← add Ri
+        self.step_history = {'drive': [], 'Ri': [], 'x_position': [], 'y_position': [], 'transformed_reward': []}  # ← add Ri
         self.episode_intrinsic_total = 0.0
         self.past_119 = 0
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
         current_119 = int(obs[119])
+        x_position = int(obs[10])
+        y_position = int(obs[16])
 
         energy_delta = -0.5
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
             energy_delta = +10
-
-        # in HullWrapper.step()
-        #if self.current_episode > 9990:
-            #print(f"step={self.current_episode} | 119={current_119} | past={self.past_119} | delta={energy_delta} | D={self.D:.1f}", flush=True)
 
         # 2. update drive
         self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)
@@ -249,6 +292,9 @@ class HullWrapper(gym.Wrapper):
         self.episode_intrinsic_total += Ri            # ← accumulate
         self.step_history['drive'].append(self.D)
         self.step_history['Ri'].append(Ri) 
+        self.step_history['x_position'].append(x_position)
+        self.step_history['y_position'].append(y_position)
+        self.step_history['transformed_reward'].append(reward) 
         self.past_119 = current_119
 
         if terminated or truncated:
@@ -267,7 +313,7 @@ class HullWrapper(gym.Wrapper):
         # Reset episode-level trackers
         self.D = self.D_star          
 
-        self.step_history = {'drive': [], 'Ri': []}   # ← reset both
+        self.step_history = {'drive': [], 'Ri': [], 'x_position': [], 'y_position': [], 'transformed_reward': []}   # ← reset both
         self.episode_intrinsic_total = 0.0  
         self.past_119 = 0
         

@@ -13,7 +13,7 @@ import gymnasium as gym
 import numpy as np
 
 from gymnasium.wrappers import TransformReward, RecordEpisodeStatistics
-from wrappers import IncentiveWrapper, CombineRewardWrapper, HullWrapper, MetricsWrapper, RawRewardTracker, RestrictActionsWrapper, WantLikeWrapper
+from wrappers import IncentiveWrapper, CombineRewardWrapper, VanillaPositionWrapper, LifeLossWrapper, HullWrapper, MetricsWrapper, RawRewardTracker, RestrictActionsWrapper, WantLikeWrapper
 
 gym.register_envs(ale_py)
 
@@ -29,6 +29,7 @@ def make_env_with_metrics(name,
                    frameskip=4)
 
     env = RestrictActionsWrapper(env)
+    env = LifeLossWrapper(env)    
     env = RawRewardTracker(env)
     raw_tracker = env
     
@@ -38,6 +39,9 @@ def make_env_with_metrics(name,
         env = TransformReward(env, lambda r: np.sign(r))
     else:
         env = apply_reward_shaping(env)
+
+    if agent_style == 'Vanilla': 
+        env = VanillaPositionWrapper(env) 
     
     if agent_style == 'Hull':
         env = HullWrapper(env)

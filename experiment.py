@@ -117,14 +117,14 @@ def train_with_seed(env_name,
                 metrics['episode'] = episode_count
                 metrics['timestep'] = t
                 metrics['seed'] = seed
+                metrics['step_history'] = info["episode"].get("step_history", {})
                 
                 if agent_style == 'Hull' or agent_style == 'WantLike' or agent_style == 'Incentive':
                     metrics['intrinsic_total'] = info["episode"].get("intrinsic_total", 0)  
-                    metrics['step_history'] = info["episode"].get("step_history", {})
+                    
                     # ratio to compare intrinsic vs extrinsic magnitude
-                    ext = metrics['external_reward']
-                    intr = metrics['intrinsic_total']
-                    metrics['intrinsic_extrinsic_ratio'] = intr / ext if ext != 0 else 0
+                    #ext = metrics['external_reward']
+                    #intr = metrics['intrinsic_total']
 
                 if agent_style == 'Incentive':
                     metrics['q_before']  = episode_q_before.copy()
