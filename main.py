@@ -23,7 +23,7 @@ def main():
     # Experiment settings
     parser.add_argument('--env', type=str, default='MsPacman',
                        help='Environment name')
-    parser.add_argument('--num_seeds', type=int, default=4,
+    parser.add_argument('--num_seeds', type=int, default=1,
                        help='Number of seeds for training')
     parser.add_argument('--steps', type=int, default=1_000_000,
                        help='Total training steps per seed')
@@ -31,9 +31,9 @@ def main():
                        help='Number of evaluation episodes')
     parser.add_argument('--clip_rewards', action='store_true', default=False,
                    help='Clip rewards to -1, 0, 1')
-    parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['Hull'],
+    parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['WantLike'],
                        choices = ['Vanilla', 'Hull', 'WantLike', 'Incentive'],
-                       help='List with agents to be trained. Options: Vanilla, Hull, Want_like, Incentive')
+                       help='List with agents to be trained. Options: Vanilla, Hull, WantLike, Incentive')
     
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
