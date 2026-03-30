@@ -235,7 +235,7 @@ def run_full_experiment(env_name="MsPacman",
         }
         
         # Train with multiple seeds
-        seeds = [42, 123, 456, 789][:num_seeds]
+        seeds = [1, 42, 123, 456, 789][:num_seeds]
         
         for seed in seeds:
             # Train
