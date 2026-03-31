@@ -176,13 +176,13 @@ def train_with_seed(env_name,
             if len(all_metrics) >= 20:
                 recent_metrics = all_metrics[-20:]
                 avg_lifetime = np.mean([m['lifetime'] for m in recent_metrics])
-                avg_pellet_eff = np.mean([m['pellet_efficiency'] for m in recent_metrics])
+                #avg_pellet_eff = np.mean([m['pellet_efficiency'] for m in recent_metrics])
                 
                 bar.set_postfix({
                     "eps": f"{eps(t):.2f}",
                     "reward": f"{recent:.0f}",
                     "life": f"{avg_lifetime:.0f}",
-                    "p_eff": f"{avg_pellet_eff:.3f}"
+                    #"p_eff": f"{avg_pellet_eff:.3f}"
                 })
             else:
                 bar.set_postfix({"eps": f"{eps(t):.2f}", "reward": f"{recent:.0f}"})

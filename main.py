@@ -9,9 +9,36 @@ Main entry point for Ms. Pac-Man DQN experiments
 Run training with multiple seeds and evaluation
 """
 import argparse
+import sys
 import os
 from experiment import train_with_seed, run_full_experiment, evaluate_agent
 from utils import set_seed
+from loguru import logger
+
+def setup_logging(save_dir: str):
+    """Configure loguru to log to both console and file."""
+    os.makedirs(save_dir, exist_ok=True)
+    log_path = os.path.join(save_dir, "experiment.log")
+
+    # Remove default stderr sink
+    logger.remove()
+
+    # Console: INFO and above
+    logger.add(sys.stderr, level="INFO", colorize=True,
+               format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | {message}")
+
+    # File: DEBUG and above, with full tracebacks on crashes
+    logger.add(
+        log_path,
+        level="DEBUG",
+        rotation="50 MB",        # start a new file after 50 MB
+        retention=3,             # keep last 3 rotated files
+        backtrace=True,          # full traceback on exceptions
+        diagnose=True,           # show variable values in traceback
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}"
+    )
+
+    logger.info(f"Logging to: {log_path}")
 
 
 def main():
@@ -40,7 +67,10 @@ def main():
                        help='Directory to save results')
     
     args = parser.parse_args()
-    
+
+    # Set up logging FIRST, before anything else runs
+    setup_logging(args.save_dir)
+
     # Print configuration
     print("="*60)
     print("MS. PAC-MAN DQN EXPERIMENT")
@@ -53,29 +83,44 @@ def main():
     print(f"Save directory: {args.save_dir}")
     print("="*60)
     print()
-    
-    # Create save directory
-    os.makedirs(args.save_dir, exist_ok=True)    
-       
-    print("\nRunning full experiment...")
-    run_full_experiment(
-        env_name=args.env,
-        num_seeds=args.num_seeds,
-        training_steps=args.steps,
-        eval_episodes=args.eval_episodes,
-        save_dir=args.save_dir,
-        agent_styles=args.agent_styles,
-        clip_rewards=args.clip_rewards,
-    )
-    
+
+    logger.info("=" * 60)
+    logger.info("MS. PAC-MAN DQN EXPERIMENT")
+    logger.info(f"Environment:         {args.env}")
+    logger.info(f"Number of seeds:     {args.num_seeds}")
+    logger.info(f"Training steps:      {args.steps:,}")
+    logger.info(f"Evaluation episodes: {args.eval_episodes}")
+    logger.info(f"Agent styles:        {args.agent_styles}")
+    logger.info(f"Save directory:      {args.save_dir}")
+    logger.info("=" * 60)
+
+    try:
+        logger.info("Running full experiment...")
+        run_full_experiment(
+            env_name=args.env,
+            num_seeds=args.num_seeds,
+            training_steps=args.steps,
+            eval_episodes=args.eval_episodes,
+            save_dir=args.save_dir,
+            agent_styles=args.agent_styles,
+            clip_rewards=args.clip_rewards,
+        )
+        logger.info("EXPERIMENT COMPLETE! Results saved to: {}", args.save_dir)
+
+    except Exception:
+        # logger.exception captures the full traceback automatically
+        logger.exception("Experiment crashed with an unhandled exception!")
+        sys.exit(1)  # non-zero exit so the cluster scheduler marks the job as failed  
+        
     print("\n" + "="*60)
     print("EXPERIMENT COMPLETE!")
     print(f"Results saved to: {args.save_dir}")
     print("="*60)
 
-
 if __name__ == "__main__":
     main()
+
+
 
 
 # In[ ]:
@@ -105,4 +150,10 @@ python main.py --mode train --seeds 1 --steps 10000
 #python main.py --num-seeds 3 --steps 500000 --agent-styles Vanilla Hull
 
 """
+
+
+# In[ ]:
+
+
+
 
