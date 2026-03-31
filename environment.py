@@ -59,19 +59,21 @@ def make_env_with_metrics(name,
     
     return env
 
+
 def scale_reward(r):
     """Transform rewards to reasonable range"""
     if r <= 0:
         return r # negative reward
-    elif r == 10:
-        return 1 # normal pellet
+    elif r >= 10:
+        return r / 10 
+'''        
     elif r == 50:
         return 3 # power pellet
     elif r >= 200:
         return r / 50 # ghosts
     else:
         return r / 100 # fruits and other bonuses
-
+'''
 
 def apply_reward_shaping(env):
     """Apply reward shaping to environment"""

@@ -104,18 +104,29 @@ class MetricsWrapper(gym.Wrapper):
         self.level_started = False
         self.past_119 = 0    
         self.total_levels_completed = 0
+
+        # Score tracking
+        self.past_120 = 0
+        self.past_121 = 0
+        self.power_pellets_eaten = 0
+        self.ghosts_eaten = 0
         
     def reset(self, **kwargs):
         """Reset episode tracking"""
-        obs = self.env.reset(**kwargs)        
+        obs, info = self.env.reset(**kwargs)        
         self.episode_positions = []
         self.episode_steps = 0
         self.pellets_eaten = 0      # add this
-        self.past_119 = 0    
+        self.past_119 = int(obs[119])  
         self.current_episode_level = 0
         self.level_started = False
+
+        self.past_120 = int(obs[120])
+        self.past_121 = int(obs[121])
+        self.power_pellets_eaten = 0
+        self.ghosts_eaten = 0
                
-        return obs
+        return obs, info
     
     def step(self, action):
         """Step environment and track metrics"""
@@ -143,55 +154,41 @@ class MetricsWrapper(gym.Wrapper):
             self.pellets_eaten += 1   
             
         self.past_119 = current_119
+
+        current_120 = int(obs[120])
+        current_121 = int(obs[121])
+        score_now  = (current_121 * 160 + current_120) // 16 * 10
+        score_prev = (self.past_121 * 160 + self.past_120) // 16 * 10
+        delta = score_now - score_prev
+        if delta == 50:
+            self.power_pellets_eaten += 1
+        elif delta in [200, 400, 800, 1600]:
+            self.ghosts_eaten += 1
+        self.past_120 = current_120
+        self.past_121 = current_121
         
         # Calculate metrics at episode end
         if terminated or truncated:
             raw_rewards = self.raw_tracker.episode_raw_rewards.copy() if self.raw_tracker else []
-            metrics = self.calculate_metrics(raw_rewards)
-            #metrics['raw_rewards_list'] = raw_rewards               
+            metrics = self.calculate_metrics()
+            metrics['raw_rewards_list'] = raw_rewards               
             metrics['raw_episode_return'] = sum(raw_rewards) if raw_rewards else 0  
             info['metrics'] = metrics
         
         return obs, reward, terminated, truncated, info       
 
 
-    def calculate_metrics(self, raw_rewards):
+    def calculate_metrics(self):
         """Calculate all metrics for the episode"""
        
         # 1. Average Lifetime
         lifetime = self.episode_steps
         
         # 2. Pellet Efficiency (from RAW rewards)
-        pellets_eaten = self.pellets_eaten
-        pellet_efficiency = pellets_eaten / lifetime if lifetime > 0 else 0
-        
-        # 3. Ghost-Eating Efficiency (from RAW rewards)
-        power_pellets_eaten = sum(1 for r in raw_rewards if r == 50)
-        
-        ghosts_eaten = 0
-        frightened_mode = False
-        frightened_timer = 0
-        
-        for r in raw_rewards:
-            # Enter frightened mode when power pellet eaten
-            if r == 50:
-                frightened_mode = True
-                frightened_timer = 0
-            
-            # Count ghosts (unambiguous rewards)
-            if r in [400, 800, 1600, 3200]:
-                ghosts_eaten += 1
-            # For 200 points, only count during frightened mode
-            elif r == 200 and frightened_mode:
-                ghosts_eaten += 1
-            
-            # Frightened mode lasts ~40 steps
-            if frightened_mode:
-                frightened_timer += 1
-                if frightened_timer > 40:
-                    frightened_mode = False
-        
-        ghost_efficiency = ghosts_eaten / power_pellets_eaten if power_pellets_eaten > 0 else 0
+        #pellets_eaten = self.pellets_eaten
+        #pellet_efficiency = pellets_eaten / lifetime if lifetime > 0 else 0
+       
+        #ghost_efficiency = self.ghosts_eaten / self.power_pellets_eaten if self.power_pellets_eaten > 0 else 0
         
         # 4. Backtracking Rate
         backtrack_count = 0
@@ -205,17 +202,17 @@ class MetricsWrapper(gym.Wrapper):
         backtrack_rate = backtrack_count / lifetime if lifetime > 0 else 0
         
         # 5. External (raw) reward
-        external_reward = sum(raw_rewards) if raw_rewards else 0
+        #external_reward = sum(raw_rewards) if raw_rewards else 0
                
         return {
             'lifetime': lifetime,
-            'pellet_efficiency': pellet_efficiency,
-            'ghost_eating_efficiency': ghost_efficiency,
+            #'pellet_efficiency': pellet_efficiency,
+            #'ghost_eating_efficiency': ghost_efficiency,
             'backtracking_rate': backtrack_rate,
             'level_reached': self.total_levels_completed,
-            'pellets_eaten': pellets_eaten,
-            'power_pellets_eaten': power_pellets_eaten,
-            'ghosts_eaten': ghosts_eaten,
+            'pellets_eaten': self.pellets_eaten,
+            'power_pellets_eaten': self.power_pellets_eaten,
+            'ghosts_eaten': self.ghosts_eaten,
         }        
 
 
@@ -362,14 +359,15 @@ class WantLikeWrapper(gym.Wrapper):
         # without desliking for being above homeostase  
 
         # if it is under homeosthasis (old drive < 30) compute in both directions, like for increasing, dislike decreasing
-        if old_drive < self.D_star: Ril = (self.D - old_drive)/self.D_star # positive if D increased and negative otherwise
+        if old_drive <= self.D_star: Ril = (self.D - old_drive)/self.D_star # positive if D increased and negative otherwise
 
+        
         # if old drive was on homeosthasis
-        elif old_drive == self.D_star: 
+        #elif old_drive == self.D_star: 
             # dislike if decreasing 
-            if self.D < self.D_star: Ril = (self.D - old_drive)/self.D_star 
+            #if self.D < self.D_star: Ril = (self.D - old_drive)/self.D_star 
             # reduced like if increasing (still like eating, but less pleasure) 
-            else: Ril = (old_drive - self.D)/(self.D_star + self.D)  
+            #else: Ril = (old_drive - self.D)/(self.D_star + self.D)  
 
         # still like eating, but reducing... does not deslike 
         else: 

@@ -321,6 +321,7 @@ def evaluate_agent(net,
             
             if done and 'metrics' in info:
                 metrics = info['metrics']
+                metrics['step_history'] = info['episode']['step_history']
                 metrics['eval_episode'] = episode
                 metrics['eval_seed'] = episode_seed
                 eval_metrics.append(metrics)
