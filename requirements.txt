@@ -4,3 +4,4 @@ tqdm
 imageio
 gymnasium[atari]
 ale-py
+loguru
