@@ -307,6 +307,16 @@ def evaluate_agent(net,
         while not done:
             with torch.no_grad():
                 q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
+                C = None
+                if agent_style == 'Incentive':
+                    kappa = info.get('kappa', None)
+                    if kappa is not None and kappa > 0: # vai calcular o valor da cue
+                        px, py = int(state[10]), int(state[16])
+                        eaten = info.get('eaten_pellet_positions', set())
+                        traversable = info.get('traversable_positions', set())
+                        C = compute_directional_pellet_salience(px, py, traversable, eaten)
+                        q_values = q_values + kappa * C
+                        
                 if deterministic:
                     a = q.argmax(1).item()
                 else:

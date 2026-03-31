@@ -479,7 +479,7 @@ class IncentiveWrapper(gym.Wrapper):
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
             energy_delta = +10 
-            Ril = 0.5
+            Ril = 1
             self.eaten_pellet_positions.add(curr_pos)
 
         self.past_119 = current_119
