@@ -272,7 +272,7 @@ class HullWrapper(gym.Wrapper):
         x_position = int(obs[10])
         y_position = int(obs[16])
 
-        energy_delta = -0.5
+        energy_delta = -1
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
@@ -337,7 +337,7 @@ class WantLikeWrapper(gym.Wrapper):
 
         # Step-level tracking (history within episode)
         self.current_episode = 0
-        self.step_history = {'drive': [], 'Riw': [], 'Ril': []}          
+        self.step_history = {'drive': [], 'Riw': [], 'Ril': [], 'x_position': [], 'y_position': [], 'transformed_reward': []}          
         self.episode_intrinsic_total = 0.0
         self.past_119 = 0
 
@@ -345,7 +345,7 @@ class WantLikeWrapper(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         current_119 = int(obs[119])
 
-        energy_delta = -0.5
+        energy_delta = -1
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
@@ -361,14 +361,6 @@ class WantLikeWrapper(gym.Wrapper):
 
         # if it is under homeosthasis (old drive < 30) compute in both directions, like for increasing, dislike decreasing
         if old_drive <= self.D_star: Ril = (self.D - old_drive)/self.D_star # positive if D increased and negative otherwise
-
-        
-        # if old drive was on homeosthasis
-        #elif old_drive == self.D_star: 
-            # dislike if decreasing 
-            #if self.D < self.D_star: Ril = (self.D - old_drive)/self.D_star 
-            # reduced like if increasing (still like eating, but less pleasure) 
-            #else: Ril = (old_drive - self.D)/(self.D_star + self.D)  
 
         # still like eating, but reducing... does not deslike 
         else: 
@@ -388,6 +380,9 @@ class WantLikeWrapper(gym.Wrapper):
         self.step_history['drive'].append(self.D)
         self.step_history['Riw'].append(Riw)
         self.step_history['Ril'].append(Ril)
+        self.step_history['x_position'].append(x_position)
+        self.step_history['y_position'].append(y_position)
+        self.step_history['transformed_reward'].append(reward) 
 
         if terminated or truncated:
             if "episode" not in info:
@@ -408,7 +403,7 @@ class WantLikeWrapper(gym.Wrapper):
         self.past_119 = 0
 
         # Step-level tracking (history within episode)
-        self.step_history = {'drive': [], 'Riw': [], 'Ril': []} 
+        self.step_history = {'drive': [], 'Riw': [], 'Ril': [], 'x_position': [], 'y_position': [], 'transformed_reward': []} 
         self.episode_intrinsic_total = 0.0
         
         obs, info = self.env.reset(**kwargs)
@@ -460,7 +455,7 @@ class IncentiveWrapper(gym.Wrapper):
 
         # Step-level tracking (history within episode)
         self.current_episode = 0
-        self.step_history = {'drive': [], 'kappa': [], 'Ril': []}
+        self.step_history = {'drive': [], 'kappa': [], 'Ril': [],  'x_position': [], 'y_position': [], 'transformed_reward': []}
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
@@ -471,7 +466,7 @@ class IncentiveWrapper(gym.Wrapper):
             self.traversable_positions.add(curr_pos)
 
         # 1. detect eating first (takes priority)
-        energy_delta = -0.5
+        energy_delta = -1
 
         current_119 = int(obs[119])
 
@@ -500,6 +495,9 @@ class IncentiveWrapper(gym.Wrapper):
         self.step_history['drive'].append(self.D)
         self.step_history['kappa'].append(self.kappa)
         self.step_history['Ril'].append(Ril)
+        self.step_history['x_position'].append(x_position)
+        self.step_history['y_position'].append(y_position)
+        self.step_history['transformed_reward'].append(reward) 
 
 
         if terminated or truncated:
@@ -528,7 +526,7 @@ class IncentiveWrapper(gym.Wrapper):
         self.past_119 = 0
 
         # Step-level tracking (history within episode)
-        self.step_history = {'drive': [], 'kappa': [], 'Ril': []} 
+        self.step_history = {'drive': [], 'kappa': [], 'Ril': [],  'x_position': [], 'y_position': [], 'transformed_reward': []} 
         
         obs, info = self.env.reset(**kwargs)
         self.current_episode += 1
