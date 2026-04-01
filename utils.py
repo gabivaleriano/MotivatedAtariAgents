@@ -87,7 +87,7 @@ def compute_directional_pellet_salience(pacman_x, pacman_y, traversable_position
             if pos not in eaten_pellet_positions:
                 pellet_score += discount
         
-        C[i] = pellet_score
+        C[i] = pellet_score * 10
     
     return C
 
