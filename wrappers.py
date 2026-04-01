@@ -344,6 +344,8 @@ class WantLikeWrapper(gym.Wrapper):
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
         current_119 = int(obs[119])
+        x_position = int(obs[10])
+        y_position = int(obs[16])
 
         energy_delta = -1
 
@@ -459,8 +461,10 @@ class IncentiveWrapper(gym.Wrapper):
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
+        x_position = int(obs[10])
+        y_position = int(obs[16])
 
-        curr_pos = (int(obs[10]), int(obs[16]))   # x_byte=10, y_byte=16
+        curr_pos = (x_position), y_position)   # x_byte=10, y_byte=16
         
         if curr_pos not in self.traversable_positions:
             self.traversable_positions.add(curr_pos)
