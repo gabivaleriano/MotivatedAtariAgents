@@ -83,6 +83,7 @@ def train_with_seed(env_name,
 
             q_before = q_values.copy()   # snapshot before any adjustment 
             C = None
+            
             if agent_style == 'Incentive':
                 kappa = info.get('kappa', None)
                 if kappa is not None and kappa > 0: # vai calcular o valor da cue
@@ -96,9 +97,8 @@ def train_with_seed(env_name,
             episode_q_after.append(q_values.copy())
             episode_C_values.append(C)
             
-            a = int(np.argmax(q_values))   
+            a = int(np.argmax(q_values)) 
             
-        
         # Environment step
         ns, r, term, trunc, info = env.step(a)
         done = term or trunc
@@ -302,12 +302,15 @@ def evaluate_agent(net,
         random.seed(episode_seed)
         
         state, _ = env.reset(seed=episode_seed)
+        info = {}
         done = False
         
         while not done:
             with torch.no_grad():
                 q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
                 C = None
+                q_values = q.squeeze(0).cpu().numpy()
+                
                 if agent_style == 'Incentive':
                     kappa = info.get('kappa', None)
                     if kappa is not None and kappa > 0: # vai calcular o valor da cue
@@ -316,15 +319,15 @@ def evaluate_agent(net,
                         traversable = info.get('traversable_positions', set())
                         C = compute_directional_pellet_salience(px, py, traversable, eaten)
                         q_values = q_values + kappa * C
-                        
+
                 if deterministic:
-                    a = q.argmax(1).item()
+                    a = int(np.argmax(q_values))
                 else:
                     # Small epsilon for variation
                     if random.random() < 0.05:
                         a = env.action_space.sample()
                     else:
-                        a = q.argmax(1).item()
+                        a = int(np.argmax(q_values))
             
             state, r, term, trunc, info = env.step(a)
             done = term or trunc

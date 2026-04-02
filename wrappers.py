@@ -40,7 +40,7 @@ class LifeLossWrapper(gym.Wrapper):
         current_lives = obs[self.LIVES_RAM_BYTE]
         
         if current_lives < self._lives:
-            reward -= 200
+            reward -= 5
             #terminated = True  
         
         self._lives = current_lives
@@ -464,7 +464,7 @@ class IncentiveWrapper(gym.Wrapper):
         x_position = int(obs[10])
         y_position = int(obs[16])
 
-        curr_pos = (x_position), y_position)   # x_byte=10, y_byte=16
+        curr_pos = (x_position, y_position)   # x_byte=10, y_byte=16
         
         if curr_pos not in self.traversable_positions:
             self.traversable_positions.add(curr_pos)
