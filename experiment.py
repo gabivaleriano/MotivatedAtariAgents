@@ -85,6 +85,7 @@ def train_with_seed(env_name,
             C = None
             
             if agent_style == 'Incentive':
+                kappa = info.get('kappa', None)
                 if kappa is None:
                     kappa = 0.0  # no salience effect → vanilla DQN behavior
                 else:
@@ -326,6 +327,7 @@ def evaluate_agent(net,
                 q_values = q.squeeze(0).cpu().numpy()
                 
                 if agent_style == 'Incentive':
+                    kappa = info.get('kappa', None)
                     if kappa is None:
                         kappa = 0.0  # no salience effect → vanilla DQN behavior
                     else:
