@@ -105,7 +105,7 @@ def train_with_seed(env_name,
                     else:
                         C = np.zeros_like(C_raw)  # all directions equal, no bias
                     
-                    q_values = q_values 1 + kappa * C 
+                    q_values = q_values *(1 + kappa * C) 
                     
             episode_q_before.append(q_before)
             episode_q_after.append(q_values.copy())
@@ -348,7 +348,7 @@ def evaluate_agent(net,
                         else:
                             C = np.zeros_like(C_raw)  # all directions equal, no bias
                         
-                        q_values = q_values 1 + kappa * C 
+                        q_values = q_values *( 1 + kappa * C) 
 
                 if deterministic:
                     a = int(np.argmax(q_values))
