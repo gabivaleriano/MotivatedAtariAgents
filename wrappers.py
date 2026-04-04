@@ -40,7 +40,7 @@ class LifeLossWrapper(gym.Wrapper):
         current_lives = obs[self.LIVES_RAM_BYTE]
         
         if current_lives < self._lives:
-            reward -= 200
+            reward -= 5
             #terminated = True  
         
         self._lives = current_lives
