@@ -85,14 +85,28 @@ def train_with_seed(env_name,
             C = None
             
             if agent_style == 'Incentive':
-                kappa = info.get('kappa', None)
+                if kappa is None:
+                    kappa = 0.0  # no salience effect → vanilla DQN behavior
+                else:
+                    kappa = (kappa - 1.0) / 1.0
+            
                 if kappa is not None and kappa > 0: # vai calcular o valor da cue
                     px, py = int(state[10]), int(state[16])
                     eaten = info.get('eaten_pellet_positions', set())
                     traversable = info.get('traversable_positions', set())
-                    C = compute_directional_pellet_salience(px, py, traversable, eaten)
-                    q_values = q_values + kappa * C
+                    C_raw = compute_directional_pellet_salience(px, py, traversable, eaten)
 
+                    # Shift so minimum is 0, then normalize to [0,1]
+                    C_min = C_raw.min()
+                    C_range = C_raw.max() - C_raw.min()
+                    
+                    if C_range > 1e-8:
+                        C = (C_raw - C_min) / C_range
+                    else:
+                        C = np.zeros_like(C_raw)  # all directions equal, no bias
+                    
+                    q_values = q_values 1 + kappa * C 
+                    
             episode_q_before.append(q_before)
             episode_q_after.append(q_values.copy())
             episode_C_values.append(C)
@@ -312,13 +326,29 @@ def evaluate_agent(net,
                 q_values = q.squeeze(0).cpu().numpy()
                 
                 if agent_style == 'Incentive':
-                    kappa = info.get('kappa', None)
+                    if kappa is None:
+                        kappa = 0.0  # no salience effect → vanilla DQN behavior
+                    else:
+                        kappa = (kappa - 1.0) / 1.0
+                    
                     if kappa is not None and kappa > 0: # vai calcular o valor da cue
                         px, py = int(state[10]), int(state[16])
                         eaten = info.get('eaten_pellet_positions', set())
                         traversable = info.get('traversable_positions', set())
                         C = compute_directional_pellet_salience(px, py, traversable, eaten)
-                        q_values = q_values + kappa * C
+
+                        C_raw = compute_directional_pellet_salience(px, py, traversable, eaten)
+
+                        # Shift so minimum is 0, then normalize to [0,1]
+                        C_min = C_raw.min()
+                        C_range = C_raw.max() - C_raw.min()
+                        
+                        if C_range > 1e-8:
+                            C = (C_raw - C_min) / C_range
+                        else:
+                            C = np.zeros_like(C_raw)  # all directions equal, no bias
+                        
+                        q_values = q_values 1 + kappa * C 
 
                 if deterministic:
                     a = int(np.argmax(q_values))
