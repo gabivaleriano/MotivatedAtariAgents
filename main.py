@@ -50,9 +50,9 @@ def main():
     # Experiment settings
     parser.add_argument('--env', type=str, default='MsPacman',
                        help='Environment name')
-    parser.add_argument('--num_seeds', type=int, default=2,
+    parser.add_argument('--num_seeds', type=int, default=3,
                        help='Number of seeds for training')
-    parser.add_argument('--steps', type=int, default=1_000_000,
+    parser.add_argument('--steps', type=int, default=2_000_000,
                        help='Total training steps per seed')
     parser.add_argument('--eval-episodes', type=int, default=100,
                        help='Number of evaluation episodes')
