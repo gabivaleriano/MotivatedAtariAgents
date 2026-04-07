@@ -46,6 +46,8 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buffer)
 
+
+
 def compute_directional_pellet_salience(pacman_x, pacman_y, traversable_positions, eaten_pellet_positions, n_steps=10, n_actions=5):
     # vai considerar as paredes como salientes, quão ruim é isto? 
     """
@@ -87,9 +89,19 @@ def compute_directional_pellet_salience(pacman_x, pacman_y, traversable_position
             if pos not in eaten_pellet_positions:
                 pellet_score += discount
         
-        C[i] = pellet_score * 10
-    
+        C[i] = pellet_score 
+
+        total = np.sum(C)
+        
+        if total > 0:
+            C = C / total
+        else:
+            # fallback: uniform over valid actions (or keep zeros)
+            C = np.ones_like(C) / len(C)
+
     return C
+    
+
 
 
 # In[ ]:

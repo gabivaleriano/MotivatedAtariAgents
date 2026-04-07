@@ -82,16 +82,16 @@ def train_with_seed(env_name,
                 q_values = q.squeeze(0).cpu().numpy()        
 
             #q_before = q_values.copy()   # snapshot before any adjustment 
-            #C = None
+            C = None
             
             if agent_style == 'Incentive':
                 kappa = info.get('kappa', None)
                 if kappa is not None and kappa > 0: # vai calcular o valor da cue
-                    #px, py = int(state[10]), int(state[16])
-                    #eaten = info.get('eaten_pellet_positions', set())
-                    #traversable = info.get('traversable_positions', set())
-                    #C = compute_directional_pellet_salience(px, py, traversable, eaten)
-                    q_values = q_values * kappa# * C
+                    px, py = int(state[10]), int(state[16])
+                    eaten = info.get('eaten_pellet_positions', set())
+                    traversable = info.get('traversable_positions', set())
+                    C = compute_directional_pellet_salience(px, py, traversable, eaten)
+                    q_values = q_values * (1 + kappa * C)
 
             #episode_q_before.append(q_before)
             #episode_q_after.append(q_values.copy())
@@ -308,17 +308,17 @@ def evaluate_agent(net,
         while not done:
             with torch.no_grad():
                 q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
-                #C = None
+                C = None
                 q_values = q.squeeze(0).cpu().numpy()
                 
                 if agent_style == 'Incentive':
                     kappa = info.get('kappa', None)
                     if kappa is not None and kappa > 0: # vai calcular o valor da cue
-                        #px, py = int(state[10]), int(state[16])
-                        #eaten = info.get('eaten_pellet_positions', set())
-                        #traversable = info.get('traversable_positions', set())
-                        #C = compute_directional_pellet_salience(px, py, traversable, eaten)
-                        q_values = q_values * kappa #* C
+                        px, py = int(state[10]), int(state[16])
+                        eaten = info.get('eaten_pellet_positions', set())
+                        traversable = info.get('traversable_positions', set())
+                        C = compute_directional_pellet_salience(px, py, traversable, eaten)
+                        q_values = q_values * (1 + kappa * C)
 
                 if deterministic:
                     a = int(np.argmax(q_values))

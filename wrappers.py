@@ -272,11 +272,11 @@ class HullWrapper(gym.Wrapper):
         x_position = int(obs[10])
         y_position = int(obs[16])
 
-        energy_delta = -1
+        energy_delta = -0.1
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +10
+            energy_delta = +1
 
         # 2. update drive
         self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)
@@ -347,11 +347,11 @@ class WantLikeWrapper(gym.Wrapper):
         x_position = int(obs[10])
         y_position = int(obs[16])
 
-        energy_delta = -1
+        energy_delta = -0.1
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +10 
+            energy_delta = +1 
 
         self.past_119 = current_119
 
