@@ -557,8 +557,8 @@ class HullWrapper(gym.Wrapper):
         self.wanting = 0
         self.past_119 = 0
 
-        x_position = int(obs[10])
-        y_position = int(obs[16])
+        #x_position = int(obs[10])
+        #y_position = int(obs[16])
                   
         self.current_step = 0
         self.current_episode = 0
@@ -603,9 +603,8 @@ class HullWrapper(gym.Wrapper):
         self.wanting += wanting_reward
         
         # Record step-level data
-        self.step_history['hunger'].append(self.hunger)
-        self.step_history['wanting'].append(wanting_reward)
-        self.step_history['Ril'].append(Ril)
+        self.step_history['drive'].append(self.hunger)
+        self.step_history['Ril'].append(wanting_reward)
         self.step_history['x_position'].append(x_position)
         self.step_history['y_position'].append(y_position)
         self.step_history['transformed_reward'].append(reward) 
@@ -615,11 +614,11 @@ class HullWrapper(gym.Wrapper):
         if term or trunc:
             if "episode" not in info:
                 info["episode"] = {}
-            info["episode"]["drive"] = self.D
+            info["episode"]["drive"] = self.hunger
             info["episode"]["step_history"] = self.step_history.copy()
         
         # Keep ONLY this one - CombineRewardWrapper needs it
-        info["wanting_reward"] = wanting_reward
+        info["want_reward"] = wanting_reward
         
         return obs, reward, term, trunc, info
 
