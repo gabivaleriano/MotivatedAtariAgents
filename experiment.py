@@ -38,9 +38,8 @@ def train_with_seed(env_name,
     print(f"{'='*60}\n")
 
     if agent_style == 'Incentive':
-        import pickle
-        with open("traversable_positions.pkl", "rb") as f:
-            traversable_positions = pickle.load(f)
+        with open("traversable_positions.pkl", "rb") as f_trav:
+            traversable_positions = pickle.load(f_trav)
     
     # Set seed using utils function
     set_seed(seed)
@@ -208,8 +207,8 @@ def train_with_seed(env_name,
     }
     
     save_path = os.path.join(save_dir, f'training_seed_{seed}.pkl')
-    with open(save_path, 'wb') as f:
-        pickle.dump(results, f)
+    with open(save_path, 'wb') as f_out:
+        pickle.dump(results, f_out)
     
     print(f"\nSaved training results to {save_path}")
     
