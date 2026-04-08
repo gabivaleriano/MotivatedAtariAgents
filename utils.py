@@ -49,7 +49,6 @@ class ReplayBuffer:
 
 
 def compute_directional_pellet_salience(pacman_x, pacman_y, traversable_positions, eaten_pellet_positions, n_steps=10, n_actions=5):
-    # vai considerar as paredes como salientes, quão ruim é isto? 
     """
     For each action direction, estimate how many uneaten pellets
     are in the next n_steps positions.
@@ -69,12 +68,13 @@ def compute_directional_pellet_salience(pacman_x, pacman_y, traversable_position
     C = np.zeros(n_actions)
     
     for i, (dx, dy) in enumerate(directions):
-        if dx == 0 and dy == 0:  # noop
+        if dx == 0 and dy == 0:  # noop — always 0
             C[i] = 0.0
             continue
 
         step_size = STEP_H if dx != 0 else STEP_V
         pellet_score = 0.0
+
         for step in range(1, n_steps + 1):
             next_x = (pacman_x + dx * step_size * step - X_MIN) % (X_MAX - X_MIN) + X_MIN
             next_y = np.clip(pacman_y + dy * step_size * step, Y_MIN, Y_MAX)
@@ -85,19 +85,18 @@ def compute_directional_pellet_salience(pacman_x, pacman_y, traversable_position
         
             discount = 1.0 / step
             
-            # check within a small radius (e.g. 2 pixels)
             if pos not in eaten_pellet_positions:
                 pellet_score += discount
         
-        C[i] = pellet_score 
+        C[i] = pellet_score
 
-        total = np.sum(C)
-        
-        if total > 0:
-            C = C / total
-        else:
-            # fallback: uniform over valid actions (or keep zeros)
-            C = np.ones_like(C) / len(C)
+    # Normalize AFTER all actions are computed
+    total = np.sum(C)
+    if total > 0:
+        C = C / total
+    else:
+        # Fallback: uniform over movement actions only, noop stays 0
+        C[1:] = 1.0 / (n_actions - 1)
 
     return C
     
