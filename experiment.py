@@ -36,6 +36,11 @@ def train_with_seed(env_name,
     print(f"\n{'='*60}")
     print(f"Training with seed {seed}")
     print(f"{'='*60}\n")
+
+    if agent_style == 'Incentive':
+        import pickle
+        with open("traversable_positions.pkl", "rb") as f:
+            traversable_positions = pickle.load(f)
     
     # Set seed using utils function
     set_seed(seed)
@@ -86,6 +91,7 @@ def train_with_seed(env_name,
             
             if agent_style == 'Incentive':
                 kappa = info.get('kappa', None)
+                
                 if kappa is not None and kappa > 0: # vai calcular o valor da cue
                     px, py = int(state[10]), int(state[16])
                     eaten = info.get('eaten_pellet_positions', set())

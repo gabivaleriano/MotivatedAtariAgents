@@ -158,13 +158,17 @@ class MetricsWrapper(gym.Wrapper):
 
         current_120 = int(obs[120])
         current_121 = int(obs[121])
+        
         score_now  = (current_121 * 160 + current_120) // 16 * 10
         score_prev = (self.past_121 * 160 + self.past_120) // 16 * 10
         delta = score_now - score_prev
+        
         if delta == 50:
             self.power_pellets_eaten += 1
+            
         elif delta in [200, 400, 800, 1600]:
             self.ghosts_eaten += 1
+            
         self.past_120 = current_120
         self.past_121 = current_121
         
@@ -470,7 +474,7 @@ class IncentiveWrapper(gym.Wrapper):
             self.traversable_positions.add(curr_pos)
 
         # 1. detect eating first (takes priority)
-        energy_delta = -1
+        energy_delta = -0.1
 
         current_119 = int(obs[119])
 
@@ -478,9 +482,10 @@ class IncentiveWrapper(gym.Wrapper):
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +10 
+            energy_delta = +1
             Ril = 1
-            self.eaten_pellet_positions.add(curr_pos)
+            
+        self.eaten_pellet_positions.add(curr_pos)
 
         self.past_119 = current_119
 
@@ -542,7 +547,7 @@ class IncentiveWrapper(gym.Wrapper):
 # In[ ]:
 
 
-class HullWrapper(gym.Wrapper):
+class OldHullWrapper(gym.Wrapper):
 
     def __init__(self, env, 
                  lambda_wanting=1.0,    

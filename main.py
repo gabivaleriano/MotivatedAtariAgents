@@ -50,15 +50,15 @@ def main():
     # Experiment settings
     parser.add_argument('--env', type=str, default='MsPacman',
                        help='Environment name')
-    parser.add_argument('--num_seeds', type=int, default=1,
+    parser.add_argument('--num_seeds', type=int, default=3,
                        help='Number of seeds for training')
-    parser.add_argument('--steps', type=int, default=2_000_000,
+    parser.add_argument('--steps', type=int, default=1_000_000,
                        help='Total training steps per seed')
     parser.add_argument('--eval-episodes', type=int, default=100,
                        help='Number of evaluation episodes')
     parser.add_argument('--clip_rewards', action='store_true', default=False,
                    help='Clip rewards to -1, 0, 1')
-    parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['Incentive'],
+    parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['WantLike','Incentive'],
                        choices = ['Vanilla', 'Hull', 'WantLike', 'Incentive'],
                        help='List with agents to be trained. Options: Vanilla, Hull, Want_like, Incentive')
     

@@ -66,14 +66,6 @@ def scale_reward(r):
         return r # negative reward
     elif r >= 10:
         return r / 10 
-'''        
-    elif r == 50:
-        return 3 # power pellet
-    elif r >= 200:
-        return r / 50 # ghosts
-    else:
-        return r / 100 # fruits and other bonuses
-'''
 
 def apply_reward_shaping(env):
     """Apply reward shaping to environment"""
