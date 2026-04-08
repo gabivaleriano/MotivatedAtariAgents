@@ -542,7 +542,7 @@ class IncentiveWrapper(gym.Wrapper):
 # In[ ]:
 
 
-class HullWrapperOld(gym.Wrapper):
+class HullWrapper(gym.Wrapper):
 
     def __init__(self, env, 
                  lambda_wanting=1.0,    
@@ -556,12 +556,15 @@ class HullWrapperOld(gym.Wrapper):
         self.hunger = 0.0
         self.wanting = 0
         self.past_119 = 0
+
+        x_position = int(obs[10])
+        y_position = int(obs[16])
                   
         self.current_step = 0
         self.current_episode = 0
 
         # Step-level tracking (history within episode)
-        self.step_history = { 'hunger': [], 'wanting': [],}
+        self.step_history = {'drive': [], 'kappa': [], 'Ril': [],  'x_position': [], 'y_position': [], 'transformed_reward': []} 
     
     def reset(self, **kwargs):
        
@@ -572,7 +575,7 @@ class HullWrapperOld(gym.Wrapper):
         self.past_119 = 0
         
         # Reset step history
-        self.step_history = { 'hunger': [], 'wanting': [],}
+        self.step_history = {'drive': [], 'kappa': [], 'Ril': [],  'x_position': [], 'y_position': [], 'transformed_reward': []} 
         
         obs, info = self.env.reset(**kwargs)
         self.current_episode += 1
@@ -600,6 +603,10 @@ class HullWrapperOld(gym.Wrapper):
         # Record step-level data
         self.step_history['hunger'].append(self.hunger)
         self.step_history['wanting'].append(wanting_reward)
+        self.step_history['Ril'].append(Ril)
+        self.step_history['x_position'].append(x_position)
+        self.step_history['y_position'].append(y_position)
+        self.step_history['transformed_reward'].append(reward) 
         
         self.current_step += 1
         
@@ -616,4 +623,10 @@ class HullWrapperOld(gym.Wrapper):
 
 
         
+
+
+# In[ ]:
+
+
+
 
