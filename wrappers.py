@@ -584,6 +584,8 @@ class HullWrapper(gym.Wrapper):
    
     def step(self, action):
         obs, reward, term, trunc, info = self.env.step(action)
+        x_position = int(obs[10])
+        y_position = int(obs[16])
 
         self.hunger += self.hunger_inc
 
