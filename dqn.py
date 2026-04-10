@@ -17,7 +17,7 @@ class DQN_RAM(nn.Module):
     
     def __init__(self, n_actions):
         super().__init__()
-        self.fc1 = nn.Linear(128, 256)
+        self.fc1 = nn.Linear(133, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 128)
         self.fc4 = nn.Linear(128, n_actions)

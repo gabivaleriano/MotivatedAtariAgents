@@ -9,6 +9,8 @@ Custom Gymnasium wrappers for Ms. Pac-Man
 """
 import gymnasium as gym
 import numpy as np
+from utils import compute_directional_pellet_salience
+import pickle
 
 class RestrictActionsWrapper(gym.Wrapper):
     def __init__(self, env):
@@ -461,7 +463,14 @@ class IncentiveWrapper(gym.Wrapper):
 
         # Step-level tracking (history within episode)
         self.current_episode = 0
-        self.step_history = {'drive': [], 'kappa': [], 'Ril': [],  'x_position': [], 'y_position': [], 'transformed_reward': []}
+        self.step_history = {'C': [], 'drive': [], 'kappa': [], 'Ril': [],  'x_position': [], 'y_position': [], 'transformed_reward': []}
+
+        with open("traversable_positions.pkl", "rb") as f_trav:
+            self.traversable_positions = pickle.load(f_trav)
+
+        low = np.append(self.observation_space.low, [-np.inf] * 5)
+        high = np.append(self.observation_space.high, [np.inf] * 5)
+        self.observation_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
@@ -500,8 +509,17 @@ class IncentiveWrapper(gym.Wrapper):
 
         Ri = Ril
 
+        #################################################
+        eaten = info.get('eaten_pellet_positions', set())
+        
+        C = compute_directional_pellet_salience(x_position, y_position, self.traversable_positions, eaten)
+        obs = np.append(obs, C)
+
+        #################################################
+
         self.episode_intrinsic_total += Ri        
-        self.step_history['drive'].append(self.D)
+        self.step_history['C'].append(self.D)
+        self.step_history['drive'].append(C)
         self.step_history['kappa'].append(self.kappa)
         self.step_history['Ril'].append(Ril)
         self.step_history['x_position'].append(x_position)
@@ -522,6 +540,7 @@ class IncentiveWrapper(gym.Wrapper):
         # Combine rewards
         info["like_reward"] = Ril
         info["kappa"] = self.kappa
+        info["C"] = C
                
         return obs, reward, terminated, truncated, info
 
@@ -535,11 +554,13 @@ class IncentiveWrapper(gym.Wrapper):
         self.past_119 = 0
 
         # Step-level tracking (history within episode)
-        self.step_history = {'drive': [], 'kappa': [], 'Ril': [],  'x_position': [], 'y_position': [], 'transformed_reward': []} 
+        self.step_history = {'C': [], 'drive': [], 'kappa': [], 'Ril': [],  'x_position': [], 'y_position': [], 'transformed_reward': []} 
         
         obs, info = self.env.reset(**kwargs)
         self.current_episode += 1
         self.episode_intrinsic_total = 0
+
+        obs = np.append(obs, [0,0,0,0,0,])
         
         return obs, info  
 
