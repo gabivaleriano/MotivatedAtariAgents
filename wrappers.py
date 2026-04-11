@@ -293,15 +293,26 @@ class HullWrapper(gym.Wrapper):
         self.D_min = 0
         
         self.current_episode = 0
-        self.step_history = {'drive': [], 'Ri': [], 'x_position': [], 'y_position': [], 'transformed_reward': []}  # ← add Ri
+        self.step_history = {'C': [], 'Ri': [], 'x_position': [], 'y_position': [], 'transformed_reward': []}  # ← add Ri
         self.episode_intrinsic_total = 0.0
         self.past_119 = 0
+        self.eaten_pellet_positions = set()
+        self.past_lives = 2
+
+        with open("traversable_positions.pkl", "rb") as f_trav:
+            self.traversable_positions = pickle.load(f_trav)
+
+        low = np.append(self.observation_space.low, [-np.inf] * 5).astype(np.float32)
+        high = np.append(self.observation_space.high, [np.inf] * 5).astype(np.float32)
+        self.observation_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
         current_119 = int(obs[119])
         x_position = int(obs[10])
         y_position = int(obs[16])
+        current_lives = int(obs[123])
+        curr_pos = (x_position, y_position)
 
         energy_delta = -0.1
 
@@ -312,11 +323,24 @@ class HullWrapper(gym.Wrapper):
         # 2. update drive
         self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)
 
+        if  self.past_lives - current_lives == 1:
+            self.D = 0
+
         # 3. compute intrinsic reward
         if self.D < self.D_star:
             Ri = -((self.D_star - self.D) / self.D_star) ** 2
         else:
             Ri = (self.D - self.D_star) / self.D_star  # note: no penalty per spec
+
+
+        #################################################
+        eaten = info.get('eaten_pellet_positions', set())
+        
+        C = compute_directional_pellet_salience(x_position, y_position, self.traversable_positions, eaten)
+        obs = np.append(obs, C)
+
+        #################################################
+
 
         self.episode_intrinsic_total += Ri            # ← accumulate
         self.step_history['drive'].append(self.D)
@@ -325,6 +349,7 @@ class HullWrapper(gym.Wrapper):
         self.step_history['y_position'].append(y_position)
         self.step_history['transformed_reward'].append(reward) 
         self.past_119 = current_119
+        self.eaten_pellet_positions.add(curr_pos)
 
         if terminated or truncated:
             if "episode" not in info:
@@ -342,12 +367,15 @@ class HullWrapper(gym.Wrapper):
         # Reset episode-level trackers
         self.D = self.D_star          
 
-        self.step_history = {'drive': [], 'Ri': [], 'x_position': [], 'y_position': [], 'transformed_reward': []}   # ← reset both
+        self.step_history = {'C': [],'drive': [], 'Ri': [], 'x_position': [], 'y_position': [], 'transformed_reward': []}   # ← reset both
         self.episode_intrinsic_total = 0.0  
         self.past_119 = 0
+        self.eaten_pellet_positions = set()
+        self.past_lives = 2
         
         obs, info = self.env.reset(**kwargs)
         self.current_episode += 1
+        obs = np.append(obs, [0,0,0,0,0,])
         
         return obs, info    
  
