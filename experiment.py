@@ -84,12 +84,13 @@ def train_with_seed(env_name,
             if agent_style == 'Incentive':
                 kappa = info.get('kappa', None)
                 
-                if kappa is not None and kappa > 0: # vai calcular o valor da cue
-                    C = info.get('C', None)
-                    q_values = q_values * (1 + kappa * C)
+                alpha = 0.05
+                if kappa is not None and kappa > 0 and t > 50000:
+                    C = info.get('C')
+                    q_values = q_values * (1 + alpha * kappa * C)
 
-            episode_q_before.append(q_before)
-            episode_q_after.append(q_values.copy())
+                    episode_q_before.append(q_before)
+                    episode_q_after.append(q_values.copy())
             
             a = int(np.argmax(q_values)) 
             
@@ -301,12 +302,13 @@ def evaluate_agent(net,
             with torch.no_grad():
                 q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
                 q_values = q.squeeze(0).cpu().numpy()
-                
+
+                alpha = 0.05
                 if agent_style == 'Incentive':
                     kappa = info.get('kappa', None)
                     if kappa is not None and kappa > 0: # vai calcular o valor da cue
                         C = info.get('C', None)
-                        q_values = q_values * (1 + kappa * C)
+                        q_values = q_values * (1 + alpha * kappa * C)
 
                 if deterministic:
                     a = int(np.argmax(q_values))

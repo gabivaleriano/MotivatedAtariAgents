@@ -468,8 +468,8 @@ class IncentiveWrapper(gym.Wrapper):
         with open("traversable_positions.pkl", "rb") as f_trav:
             self.traversable_positions = pickle.load(f_trav)
 
-        low = np.append(self.observation_space.low, [-np.inf] * 5)
-        high = np.append(self.observation_space.high, [np.inf] * 5)
+        low = np.append(self.observation_space.low, [-np.inf] * 5).astype(np.float32)
+        high = np.append(self.observation_space.high, [np.inf] * 5).astype(np.float32)
         self.observation_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
 
     def step(self, action):
@@ -518,8 +518,8 @@ class IncentiveWrapper(gym.Wrapper):
         #################################################
 
         self.episode_intrinsic_total += Ri        
-        self.step_history['C'].append(self.D)
-        self.step_history['drive'].append(C)
+        self.step_history['drive'].append(self.D)
+        self.step_history['C'].append(C)
         self.step_history['kappa'].append(self.kappa)
         self.step_history['Ril'].append(Ril)
         self.step_history['x_position'].append(x_position)
