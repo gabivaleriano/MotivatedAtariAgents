@@ -320,11 +320,11 @@ class HullWrapper(gym.Wrapper):
         if current_119 != self.past_119:
             energy_delta = +1
 
-        # 2. update drive
-        self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)
-
         if  self.past_lives - current_lives == 1:
-            self.D = 0
+            energy_delta -= 5
+
+        # 2. update drive
+        self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)        
 
         # 3. compute intrinsic reward
         if self.D < self.D_star:
