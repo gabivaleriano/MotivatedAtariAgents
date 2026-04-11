@@ -345,7 +345,7 @@ class HullWrapper(gym.Wrapper):
 
         self.episode_intrinsic_total += Ri            # ← accumulate
         self.step_history['drive'].append(self.D)
-        self.step_history['Ri'].append(Ri) 
+        self.step_history['Ri'].append(current_lives) 
         self.step_history['x_position'].append(x_position)
         self.step_history['y_position'].append(y_position)
         self.step_history['transformed_reward'].append(reward) 

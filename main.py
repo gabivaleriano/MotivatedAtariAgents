@@ -52,7 +52,7 @@ def main():
                        help='Environment name')
     parser.add_argument('--num_seeds', type=int, default=1,
                        help='Number of seeds for training')
-    parser.add_argument('--steps', type=int, default=1_000_000,
+    parser.add_argument('--steps', type=int, default=10_000,
                        help='Total training steps per seed')
     parser.add_argument('--eval-episodes', type=int, default=100,
                        help='Number of evaluation episodes')
