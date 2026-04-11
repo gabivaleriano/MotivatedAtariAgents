@@ -328,10 +328,11 @@ class HullWrapper(gym.Wrapper):
 
         # 3. compute intrinsic reward
         if self.D < self.D_star:
-            Ri = -((self.D_star - self.D) / self.D_star) ** 2
+            Ri = -((self.D_star - self.D) / self.D_star) ** 0.5
         else:
             Ri = (self.D - self.D_star) / self.D_star  # note: no penalty per spec
 
+        self.past_lives = current_lives
 
         #################################################
         eaten = info.get('eaten_pellet_positions', set())
