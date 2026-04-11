@@ -223,20 +223,40 @@ class MetricsWrapper(gym.Wrapper):
         }        
 
 
-# In[ ]:
+# In[1]:
 
 
 class VanillaPositionWrapper(gym.Wrapper):
     
     def __init__(self, env):
         super().__init__(env)        
-        self.step_history = {'x_position': [], 'y_position': [], 'transformed_reward': []} 
+        self.step_history = {'C': [], 'x_position': [], 'y_position': [], 'transformed_reward': []} 
+        self.eaten_pellet_positions = set()
+
+        with open("traversable_positions.pkl", "rb") as f_trav:
+            self.traversable_positions = pickle.load(f_trav)
+
+        low = np.append(self.observation_space.low, [-np.inf] * 5).astype(np.float32)
+        high = np.append(self.observation_space.high, [np.inf] * 5).astype(np.float32)
+        self.observation_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
 
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
         x_position = int(obs[10])
         y_position = int(obs[16])
+
+        curr_pos = (x_position, y_position)
+
+        self.eaten_pellet_positions.add(curr_pos)
+
+        #################################################
+        eaten = info.get('eaten_pellet_positions', set())
+        
+        C = compute_directional_pellet_salience(x_position, y_position, self.traversable_positions, eaten)
+        obs = np.append(obs, C)
+
+        #################################################
 
         self.step_history['x_position'].append(x_position)
         self.step_history['y_position'].append(y_position)
@@ -246,12 +266,17 @@ class VanillaPositionWrapper(gym.Wrapper):
             if "episode" not in info:
                 info["episode"] = {}
             info["episode"]["step_history"] = self.step_history.copy()
+
+        info["eaten_pellet_positions"] = self.eaten_pellet_positions
         
         return obs, reward, terminated, truncated, info
 
     def reset(self, **kwargs):
-        self.step_history = {'x_position': [], 'y_position': [], 'transformed_reward': []}           
-        obs, info = self.env.reset(**kwargs)        
+        self.step_history = {'C': [], 'x_position': [], 'y_position': [], 'transformed_reward': []}      
+        self.eaten_pellet_positions = set()
+        
+        obs, info = self.env.reset(**kwargs)   
+        obs = np.append(obs, [0,0,0,0,0,])
         return obs, info    
 
 
