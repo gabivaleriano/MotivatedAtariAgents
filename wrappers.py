@@ -362,6 +362,7 @@ class HullWrapper(gym.Wrapper):
         
         # Keep ONLY this one - CombineRewardWrapper needs it
         info["drive_reward"] = Ri
+        info["eaten_pellet_positions"] = self.eaten_pellet_positions
         
         return obs, reward, terminated, truncated, info
 
@@ -475,6 +476,7 @@ class WantLikeWrapper(gym.Wrapper):
         self.step_history['x_position'].append(x_position)
         self.step_history['y_position'].append(y_position)
         self.step_history['transformed_reward'].append(reward) 
+        self.eaten_pellet_positions.add(curr_pos)
 
         if terminated or truncated:
             if "episode" not in info:
@@ -485,6 +487,7 @@ class WantLikeWrapper(gym.Wrapper):
         # Keep ONLY this one - CombineRewardWrapper needs it
         info["want_reward"] = Riw
         info["like_reward"] = Ril
+        info["eaten_pellet_positions"] = self.eaten_pellet_positions
         
         return obs, reward, terminated, truncated, info
 
