@@ -287,7 +287,7 @@ class HullWrapper(gym.Wrapper):
     
     def __init__(self, env):
         super().__init__(env)
-        self.D = 30          # start at homeostasis
+        self.D = 30          # start above homeostasis
         self.D_star = 30     # homeostasis level
         self.D_max = 50
         self.D_min = 0
@@ -297,7 +297,7 @@ class HullWrapper(gym.Wrapper):
         self.episode_intrinsic_total = 0.0
         self.past_119 = 0
         self.eaten_pellet_positions = set()
-        self.past_lives = 2
+        self.past_lives = 0 # not start penalizing
 
         with open("traversable_positions.pkl", "rb") as f_trav:
             self.traversable_positions = pickle.load(f_trav)
@@ -320,15 +320,16 @@ class HullWrapper(gym.Wrapper):
         if current_119 != self.past_119:
             energy_delta = +1
 
-        if  self.past_lives - current_lives == 1:
-            energy_delta -= 5
+        if  (self.past_lives == 2 or self.past_lives == 1) and (self.past_lives - current_lives == 1):
+            #energy_delta -= 5
+            self.D = self.D_min
 
         # 2. update drive
         self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)        
 
         # 3. compute intrinsic reward
         if self.D < self.D_star:
-            Ri = -((self.D_star - self.D) / self.D_star) ** 0.5
+            Ri = -(((self.D_star - self.D) / self.D_star) ** 0.5)
         else:
             Ri = (self.D - self.D_star) / self.D_star  # note: no penalty per spec
 
@@ -345,7 +346,7 @@ class HullWrapper(gym.Wrapper):
 
         self.episode_intrinsic_total += Ri            # ← accumulate
         self.step_history['drive'].append(self.D)
-        self.step_history['Ri'].append(current_lives) 
+        self.step_history['Ri'].append(Ri) 
         self.step_history['x_position'].append(x_position)
         self.step_history['y_position'].append(y_position)
         self.step_history['transformed_reward'].append(reward) 
