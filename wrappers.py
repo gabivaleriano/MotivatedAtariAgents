@@ -374,7 +374,7 @@ class HullWrapper(gym.Wrapper):
         self.episode_intrinsic_total = 0.0  
         self.past_119 = 0
         self.eaten_pellet_positions = set()
-        self.past_lives = 2
+        self.past_lives = 0
         
         obs, info = self.env.reset(**kwargs)
         self.current_episode += 1
@@ -495,6 +495,7 @@ class WantLikeWrapper(gym.Wrapper):
         # Reset episode-level trackers
         self.D = self.D_star         # start at homeostasis
         self.past_119 = 0
+        self.past_lives = 0
 
         # Step-level tracking (history within episode)
         self.step_history = {'C': [], 'drive': [], 'Riw': [], 'Ril': [], 'x_position': [], 'y_position': [], 'transformed_reward': []} 
@@ -543,6 +544,7 @@ class IncentiveWrapper(gym.Wrapper):
         self.kappa = 1
         self.eaten_pellet_positions = set()
         self.past_119 = 0
+        self.past_lives = 0
         # track everywhere Pac-Man has actually been
         self.traversable_positions = set()
         self.episode_intrinsic_total = 0
@@ -563,6 +565,8 @@ class IncentiveWrapper(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         x_position = int(obs[10])
         y_position = int(obs[16])
+
+        current_lives = int(obs[123])
 
         curr_pos = (x_position, y_position)   # x_byte=10, y_byte=16
         
@@ -606,7 +610,8 @@ class IncentiveWrapper(gym.Wrapper):
         obs = np.append(obs, C)
 
         #################################################
-
+        self.past_lives = current_lives
+        
         self.episode_intrinsic_total += Ri        
         #self.step_history['drive'].append(self.D)
         #self.step_history['C'].append(C)
@@ -642,6 +647,7 @@ class IncentiveWrapper(gym.Wrapper):
         self.kappa = 1
         self.eaten_pellet_positions = set()
         self.past_119 = 0
+        self.past_lives = 0
 
         # Step-level tracking (history within episode)
         self.step_history = {'C': [], 'drive': [], 'kappa': [], 'Ril': [],  'x_position': [], 'y_position': [], 'transformed_reward': []} 
