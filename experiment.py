@@ -64,16 +64,16 @@ def train_with_seed(env_name,
     bar = tqdm(total=total_steps, desc=f"Seed {seed}")
 
     # Metrics storage
-    episode_q_before = []   # q values before kappa adjustment
-    episode_q_after  = []   # q values after kappa adjustment  
+    #episode_q_before = []   # q values before kappa adjustment
+    #episode_q_after  = []   # q values after kappa adjustment  
     
     for t in range(1, total_steps + 1):
         # Epsilon-greedy action selection
         if random.random() < eps(t):
             a = env.action_space.sample()
 
-            episode_q_before.append(None)
-            episode_q_after.append(None)
+            #episode_q_before.append(None)
+            #episode_q_after.append(None)
         else:
             with torch.no_grad():
                 q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
@@ -89,8 +89,8 @@ def train_with_seed(env_name,
                     C = info.get('C')
                     q_values = q_values * (1 + alpha * kappa * C)
 
-                    episode_q_before.append(q_before)
-                    episode_q_after.append(q_values.copy())
+                    #episode_q_before.append(q_before)
+                    #episode_q_after.append(q_values.copy())
             
             a = int(np.argmax(q_values)) 
             
@@ -122,14 +122,14 @@ def train_with_seed(env_name,
                     #intr = metrics['intrinsic_total']
 
                 #if agent_style == 'Incentive':
-                    metrics['q_before']  = episode_q_before.copy()
-                    metrics['q_after']   = episode_q_after.copy()
+                    #metrics['q_before']  = episode_q_before.copy()
+                    #metrics['q_after']   = episode_q_after.copy()
                     
                 all_metrics.append(metrics)
 
             # Reset episode-level buffers
-            episode_q_before.clear()
-            episode_q_after.clear()
+            #episode_q_before.clear()
+            #episode_q_after.clear()
             
             episode_count += 1
             state, _ = env.reset()

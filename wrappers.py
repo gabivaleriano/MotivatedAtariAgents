@@ -318,12 +318,11 @@ class HullWrapper(gym.Wrapper):
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +1
+            energy_delta += 1
 
         if  (self.past_lives == 2 or self.past_lives == 1) and (self.past_lives - current_lives == 1):
-            #energy_delta -= 5
-            self.D = self.D_min
-
+            energy_delta -= 5
+            
         # 2. update drive
         self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)        
 
@@ -345,8 +344,8 @@ class HullWrapper(gym.Wrapper):
 
 
         self.episode_intrinsic_total += Ri            # ← accumulate
-        self.step_history['C'].append(C)
-        self.step_history['drive'].append(self.D)
+        #self.step_history['C'].append(C)
+        #self.step_history['drive'].append(self.D)
         self.step_history['Ri'].append(Ri) 
         self.step_history['x_position'].append(x_position)
         self.step_history['y_position'].append(y_position)
@@ -426,12 +425,12 @@ class WantLikeWrapper(gym.Wrapper):
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +1 
+            energy_delta += 1 
 
         self.past_119 = current_119
 
         if  (self.past_lives == 2 or self.past_lives == 1) and (self.past_lives - current_lives == 1):
-            energy_delta = -5
+            energy_delta -= 5
 
         # 2. update drive
         old_drive = self.D
@@ -469,8 +468,8 @@ class WantLikeWrapper(gym.Wrapper):
 
         self.episode_intrinsic_total += Ri
         
-        self.step_history['C'].append(C)
-        self.step_history['drive'].append(self.D)
+        #self.step_history['C'].append(C)
+        #self.step_history['drive'].append(self.D)
         self.step_history['Riw'].append(Riw)
         self.step_history['Ril'].append(Ril)
         self.step_history['x_position'].append(x_position)
@@ -579,8 +578,11 @@ class IncentiveWrapper(gym.Wrapper):
 
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
-            energy_delta = +1
+            energy_delta += 1
             Ril = 1
+
+        if  (self.past_lives == 2 or self.past_lives == 1) and (self.past_lives - current_lives == 1):
+            energy_delta -= 5
             
         self.eaten_pellet_positions.add(curr_pos)
 
@@ -606,9 +608,9 @@ class IncentiveWrapper(gym.Wrapper):
         #################################################
 
         self.episode_intrinsic_total += Ri        
-        self.step_history['drive'].append(self.D)
-        self.step_history['C'].append(C)
-        self.step_history['kappa'].append(self.kappa)
+        #self.step_history['drive'].append(self.D)
+        #self.step_history['C'].append(C)
+        #self.step_history['kappa'].append(self.kappa)
         self.step_history['Ril'].append(Ril)
         self.step_history['x_position'].append(x_position)
         self.step_history['y_position'].append(y_position)
