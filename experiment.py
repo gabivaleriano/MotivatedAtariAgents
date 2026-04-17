@@ -84,7 +84,7 @@ def train_with_seed(env_name,
             if agent_style == 'Incentive':
                 kappa = info.get('kappa', None)
                 
-                alpha = 0.05
+                alpha = 0.01
                 if kappa is not None and kappa > 0 and t > 50000:
                     C = info.get('C')
                     q_values = q_values * (1 + alpha * kappa * C)
