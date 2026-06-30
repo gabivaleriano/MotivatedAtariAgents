@@ -19,8 +19,7 @@ from utils import set_seed
 
 
 
-def train_with_seed_incentive(seed=42, 
-                    total_steps=1_000_000):  
+def train_with_seed_incentive(seed=42, steps=1_000_000, save_dir = 'results_incentive'):  
     
     set_seed(seed=seed)
 
@@ -55,14 +54,14 @@ def train_with_seed_incentive(seed=42,
     
     episode_count = 0
     
-    bar = tqdm(total=total_steps, desc=f"Seed {seed}")
+    bar = tqdm(total=steps, desc=f"Seed {seed}")
 
     all_metrics = []
     #episode_q_before = []   # q values before kappa adjustment
     #episode_cue_q = []
     #episode_q_after  = []   # q values after kappa adjustment  
     
-    for t in range(1, total_steps + 1):
+    for t in range(1, steps + 1):
         # Epsilon-greedy action selection
         if random.random() < eps(t):
             a = env.action_space.sample()
@@ -215,12 +214,12 @@ def train_with_seed_incentive(seed=42,
 
 
 def train_with_seed(seed=42, 
-                    total_steps=1_000_000,
+                    steps=1_000_000,
                     save_dir = 'results',
                     incentive = False):
 
-    if incentive = True:
-        train_with_seed_incentive(seed = seed, total_steps=total_steps, save_dir = save_dir)
+    if incentive == True:
+        train_with_seed_incentive(seed = seed, steps=steps, save_dir = save_dir)
         return
     
     set_seed(seed=seed)
@@ -249,11 +248,11 @@ def train_with_seed(seed=42,
     
     episode_count = 0
     
-    bar = tqdm(total=total_steps, desc=f"Seed {seed}")
+    bar = tqdm(total=steps, desc=f"Seed {seed}")
 
     all_metrics = []
     
-    for t in range(1, total_steps + 1):
+    for t in range(1, steps + 1):
         # Epsilon-greedy action selection
         if random.random() < eps(t):
             a = env.action_space.sample()

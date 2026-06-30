@@ -1,0 +1,334 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[ ]:
+
+
+"""
+Training functions for DQN on Ms. Pac-Man
+"""
+import torch
+import torch.optim as optim
+import torch.nn.functional as F
+import numpy as np
+import random
+import os
+import pickle
+from datetime import datetime
+from tqdm import tqdm
+
+from dqn import DQN_RAM
+from environment import make_env_with_metrics
+from utils import ReplayBuffer, set_seed, compute_directional_pellet_salience
+
+# Device configuration
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+
+def train_with_seed(env_name, 
+                    seed, 
+                    total_steps=1_000_000, 
+                    agent_style="Vanilla",
+                    clip_rewards=False,
+                    save_dir='results'):
+
+    print(f"\n{'='*60}")
+    print(f"Training with seed {seed}")
+    print(f"{'='*60}\n")
+    
+    # Set seed using utils function
+    set_seed(seed)
+    
+    # Create environment
+    env = make_env_with_metrics(env_name, agent_style = agent_style, use_ram=True, clip_rewards=clip_rewards)
+    
+    # Create networks
+    net = DQN_RAM(env.action_space.n).to(device)
+    target = DQN_RAM(env.action_space.n).to(device)
+    target.load_state_dict(net.state_dict())
+    
+    # Optimizer and buffer
+    opt = optim.Adam(net.parameters(), lr=6.25e-5, eps=0.01/32)
+    buf = ReplayBuffer()
+    eps = lambda t: 0.1 + 0.9 * np.exp(-t / 500000)
+    
+    state, _ = env.reset()
+    info = {}
+    
+    # Metrics storage
+    all_metrics = []
+    rewards_history = []
+    episode_count = 0
+    
+    bar = tqdm(total=total_steps, desc=f"Seed {seed}")
+
+    # Metrics storage
+    #episode_q_before = []   # q values before kappa adjustment
+    #episode_q_after  = []   # q values after kappa adjustment  
+    
+    for t in range(1, total_steps + 1):
+        # Epsilon-greedy action selection
+        if random.random() < eps(t):
+            a = env.action_space.sample()
+
+            #episode_q_before.append(None)
+            #episode_q_after.append(None)
+        else:
+            with torch.no_grad():
+                q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
+                q_values = q.squeeze(0).cpu().numpy()        
+
+            q_before = q_values.copy()   # snapshot before any adjustment 
+            
+            if agent_style == 'Incentive':
+                kappa = info.get('kappa', None)
+                
+                alpha = 0.05
+                if kappa is not None and kappa > 0 and t > 50000:
+                    C = info.get('C')
+                    q_values = q_values * (1 + alpha * kappa * C)
+
+                    #episode_q_before.append(q_before)
+                    #episode_q_after.append(q_values.copy())
+            
+            a = int(np.argmax(q_values)) 
+            
+        # Environment step
+        ns, r, term, trunc, info = env.step(a)
+        done = term or trunc
+        
+        # Store experience
+        buf.push(state.__array__(), a, r, ns.__array__(), done)
+        state = ns
+        bar.update(1)
+        
+        # Episode ended
+        if done:
+            rewards_history.append(info["episode"].get("r", 0))
+            
+            if 'metrics' in info:
+                metrics = info['metrics']
+                metrics['episode'] = episode_count
+                metrics['timestep'] = t
+                metrics['seed'] = seed
+                metrics['step_history'] = info["episode"].get("step_history", {})
+                
+                if agent_style == 'Hull' or agent_style == 'WantLike' or agent_style == 'Incentive':
+                    metrics['intrinsic_total'] = info["episode"].get("intrinsic_total", 0)  
+                    
+                    # ratio to compare intrinsic vs extrinsic magnitude
+                    #ext = metrics['external_reward']
+                    #intr = metrics['intrinsic_total']
+
+                #if agent_style == 'Incentive':
+                    #metrics['q_before']  = episode_q_before.copy()
+                    #metrics['q_after']   = episode_q_after.copy()
+                    
+                all_metrics.append(metrics)
+
+            # Reset episode-level buffers
+            #episode_q_before.clear()
+            #episode_q_after.clear()
+            
+            episode_count += 1
+            state, _ = env.reset()
+        
+        # Training step
+        if len(buf) >= 10000:
+            s, a_batch, r_batch, ns, d = buf.sample(32)
+            s = torch.tensor(s, device=device)
+            ns = torch.tensor(ns, device=device)
+            a_batch = torch.tensor(a_batch, device=device).unsqueeze(1)
+            r_batch = torch.tensor(r_batch, device=device).unsqueeze(1)
+            d = torch.tensor(d, device=device).unsqueeze(1)
+            
+            # Compute Q-values
+            q = net(s).gather(1, a_batch)
+            
+            # Compute target
+            with torch.no_grad():
+                nq = target(ns).max(1)[0].unsqueeze(1)
+                tgt = r_batch + 0.99 * nq * (1 - d)
+            
+            # Update network
+            loss = F.mse_loss(q, tgt)
+            opt.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=10)
+            opt.step()
+        
+        # Update target network
+        if t % 10000 == 0:
+            target.load_state_dict(net.state_dict())
+        
+        # Update progress bar
+        if t % 50000 == 0:
+            recent = np.mean(rewards_history[-20:]) if rewards_history else 0
+            
+            if len(all_metrics) >= 20:
+                recent_metrics = all_metrics[-20:]
+                avg_lifetime = np.mean([m['lifetime'] for m in recent_metrics])
+                #avg_pellet_eff = np.mean([m['pellet_efficiency'] for m in recent_metrics])
+                
+                bar.set_postfix({
+                    "eps": f"{eps(t):.2f}",
+                    "reward": f"{recent:.0f}",
+                    "life": f"{avg_lifetime:.0f}",
+                    #"p_eff": f"{avg_pellet_eff:.3f}"
+                })
+            else:
+                bar.set_postfix({"eps": f"{eps(t):.2f}", "reward": f"{recent:.0f}"})
+    
+    bar.close()
+    
+    # Save results
+    os.makedirs(save_dir, exist_ok=True)
+    
+    results = {
+        'seed': seed,
+        'net_state_dict': net.state_dict(),
+        'rewards_history': rewards_history,
+        'all_metrics': all_metrics,
+        'total_steps': total_steps,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    save_path = os.path.join(save_dir, f'training_seed_{seed}.pkl')
+    with open(save_path, 'wb') as f_out:
+        pickle.dump(results, f_out)
+    
+    print(f"\nSaved training results to {save_path}")
+    
+    return net, rewards_history, all_metrics
+
+
+def run_full_experiment(env_name="MsPacman", 
+                       num_seeds=5, 
+                       training_steps=1_000_000,
+                       eval_episodes=100,
+                       agent_styles=["Vanilla"],
+                       save_dir='results',
+                       clip_rewards=False):
+    """Run complete experiment: multiple training runs + evaluation"""
+    
+    os.makedirs(save_dir, exist_ok=True)
+    
+    all_results = {}
+
+    # Train each agent style
+    for agent_style in agent_styles:
+        print(f"\n{'='*60}")
+        print(f"TRAINING AGENT STYLE: {agent_style}")
+        print(f"{'='*60}\n")
+        
+        style_results = {
+            'training': [],
+            'evaluation': []
+        }
+        
+        # Train with multiple seeds
+        seeds = [1, 42, 123, 456, 789][:num_seeds]
+        
+        for seed in seeds:
+            # Train
+            
+            net, rewards, metrics = train_with_seed(
+                env_name=env_name,
+                seed=seed,
+                total_steps=training_steps,
+                save_dir=f"{save_dir}/{agent_style}",  # Separate folder per style
+                agent_style=agent_style, 
+                clip_rewards=clip_rewards
+            )
+            
+            style_results['training'].append({
+                'seed': seed,
+                'rewards': rewards,
+                'metrics': metrics
+            })
+            
+            # Evaluate
+            eval_metrics = evaluate_agent(
+                net=net,
+                env_name=env_name,
+                num_episodes=eval_episodes,
+                base_seed=seed * 1000,
+                agent_style = agent_style
+            )
+            
+            style_results['evaluation'].append({
+                'train_seed': seed,
+                'eval_metrics': eval_metrics
+            })
+        
+        all_results[agent_style] = style_results        
+    
+    final_path = os.path.join(save_dir, 'all_agent_styles_results.pkl')
+    with open(final_path, 'wb') as f:
+        pickle.dump(all_results, f)
+    
+    return all_results
+
+
+def evaluate_agent(net, 
+                   env_name, 
+                   num_episodes=100, 
+                   base_seed=42, 
+                   deterministic=True,
+                   agent_style = 'Vanilla'):
+
+    print(f"\n{'='*60}")
+    print(f"Evaluating agent for {num_episodes} episodes")
+    print(f"{'='*60}\n")
+    
+    env = make_env_with_metrics(env_name, agent_style=agent_style, use_ram=True, clip_rewards=False)
+    net.eval()
+    
+    eval_metrics = []
+    
+    for episode in tqdm(range(num_episodes), desc="Evaluation"):
+        # Use different seed for each episode
+        episode_seed = base_seed + episode
+        np.random.seed(episode_seed)
+        torch.manual_seed(episode_seed)
+        random.seed(episode_seed)
+        
+        state, _ = env.reset(seed=episode_seed)
+        info = {}
+        done = False
+        
+        while not done:
+            with torch.no_grad():
+                q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
+                q_values = q.squeeze(0).cpu().numpy()
+
+                alpha = 0.05
+                if agent_style == 'Incentive':
+                    kappa = info.get('kappa', None)
+                    if kappa is not None and kappa > 0: # vai calcular o valor da cue
+                        C = info.get('C', None)
+                        q_values = q_values * (1 + alpha * kappa * C)
+
+                if deterministic:
+                    a = int(np.argmax(q_values))
+                else:
+                    # Small epsilon for variation
+                    if random.random() < 0.05:
+                        a = env.action_space.sample()
+                    else:
+                        a = int(np.argmax(q_values))
+            
+            state, r, term, trunc, info = env.step(a)
+            done = term or trunc
+            
+            if done and 'metrics' in info:
+                metrics = info['metrics']
+                metrics['step_history'] = info['episode']['step_history']
+                metrics['eval_episode'] = episode
+                metrics['eval_seed'] = episode_seed
+                eval_metrics.append(metrics)
+    
+    net.train()
+    return eval_metrics
+

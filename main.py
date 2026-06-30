@@ -42,7 +42,7 @@ def main():
     train_with_seed(
     seed=args.seed,
     steps=args.steps,
-    save_dir=args.save_dir
+    save_dir=args.save_dir,
     incentive=args.incentive)
        
     print("\n" + "="*60)
