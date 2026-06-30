@@ -4,4 +4,4 @@ tqdm
 imageio
 gymnasium[atari]
 ale-py
-
+stable-baselines3

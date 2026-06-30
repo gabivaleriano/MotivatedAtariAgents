@@ -16,10 +16,12 @@ def main():
     parser = argparse.ArgumentParser(description='Train DQN on Ms. Pac-Man')
     
     # Experiment settings
-    parser.add_argument('--seeds', type=int, default=42,
+    parser.add_argument('--seed', type=int, default=42,
                        help='Seed for runing exp')
     parser.add_argument('--steps', type=int, default=1_000_000,
                        help='Total training steps per seed')
+    parser.add_argument('--incentive', type=bool, default=False,
+                       help='Call the function training_with_seed_incentive')
     
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
@@ -36,6 +38,12 @@ def main():
     print(f"Save directory: {args.save_dir}")
     print("="*60)
     print()
+
+    train_with_seed(
+    seed=args.seed,
+    steps=args.steps,
+    save_dir=args.save_dir
+    incentive=args.incentive)
        
     print("\n" + "="*60)
     print("EXPERIMENT COMPLETE!")

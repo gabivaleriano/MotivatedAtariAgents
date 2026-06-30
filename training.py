@@ -201,7 +201,12 @@ def train_with_seed_incentive(seed=42,
             #recent = np.mean(rewards_history[-20:]) if rewards_history else 0
             bar.set_postfix({"eps": f"{eps(t):.2f}"})#, "reward": f"{recent:.0f}"})
     
-    bar.close()    
+    bar.close()   
+
+    final_path = os.path.join(save_dir, 'results_incentive.pkl')
+    with open(final_path, 'wb') as f:
+        pickle.dump(all_results, f)
+        
     return all_metrics
 
 
@@ -209,7 +214,13 @@ def train_with_seed_incentive(seed=42,
 
 
 def train_with_seed(seed=42, 
-                    total_steps=1_000_000):  
+                    total_steps=1_000_000,
+                    save_dir = 'results',
+                    incentive = False):
+
+    if incentive = True:
+        train_with_seed_incentive(seed = seed, total_steps=total_steps, save_dir = save_dir)
+        return
     
     set_seed(seed=seed)
 
@@ -313,5 +324,10 @@ def train_with_seed(seed=42,
             bar.set_postfix({"eps": f"{eps(t):.2f}"})
     
     bar.close()    
+
+    final_path = os.path.join(save_dir, 'results.pkl')
+    with open(final_path, 'wb') as f:
+        pickle.dump(all_results, f)
+        
     return all_metrics
 

@@ -4,4 +4,4 @@ echo "Installing dependencies..."
 pip install -r requirements.txt
 
 echo "Running script..."
-python main.py --save-dir results
+python main.py --save-dir results --incentive True
