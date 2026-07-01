@@ -10,14 +10,13 @@ import torch.nn.functional as F
 import random
 import numpy as np
 import os
+import pickle
 
 from tqdm import tqdm
 from dqn import DQN
 from replay_buffer import ReplayBuffer
 from env import make_env_with_metrics
 from utils import set_seed
-
-
 
 def train_with_seed_incentive(seed=42, steps=1_000_000, save_dir = 'results_incentive'):  
 
@@ -207,9 +206,9 @@ def train_with_seed_incentive(seed=42, steps=1_000_000, save_dir = 'results_ince
 
     final_path = os.path.join(save_dir, 'results_incentive.pkl')
     with open(final_path, 'wb') as f:
-        pickle.dump(all_results, f)
+        pickle.dump(all_metrics, f)
         
-    return all_metrics
+    #return all_metrics
 
 
 # In[13]:
@@ -331,7 +330,7 @@ def train_with_seed(seed=42,
 
     final_path = os.path.join(save_dir, 'results.pkl')
     with open(final_path, 'wb') as f:
-        pickle.dump(all_results, f)
+        pickle.dump(all_metrics, f)
         
-    return all_metrics
+    #return all_metrics
 
