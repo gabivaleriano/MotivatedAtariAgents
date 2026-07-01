@@ -92,9 +92,9 @@ def train_with_seed_incentive(seed=42, steps=1_000_000, save_dir = 'results_ince
             kappa = 1
             alpha = 0.05
             if kappa is not None and kappa > 0 and t > 50000: #50000
-                episode_q_before.append(q_values.copy())
-                episode_cue_q.append(cue_q_values.copy())
-                q_values = q_values * (1 + alpha * kappa * cue_q_values)
+                #episode_q_before.append(q_values.copy())
+                #episode_cue_q.append(cue_q_values.copy())
+                #q_values = q_values * (1 + alpha * kappa * cue_q_values)
 
                 episode_q_after.append(q_values.copy())
 
@@ -216,9 +216,9 @@ def train_with_seed_incentive(seed=42, steps=1_000_000, save_dir = 'results_ince
 def train_with_seed(seed=42, 
                     steps=1_000_000,
                     save_dir = 'results',
-                    incentive = False):
+                    agent = 'Vanilla'):
 
-    if incentive == True:
+    if agent == 'Incentive':
         train_with_seed_incentive(seed = seed, steps=steps, save_dir = save_dir)
         return
     

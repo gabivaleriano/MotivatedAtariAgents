@@ -20,8 +20,8 @@ def main():
                        help='Seed for runing exp')
     parser.add_argument('--steps', type=int, default=1_000_000,
                        help='Total training steps per seed')
-    parser.add_argument('--incentive', type=bool, default=False,
-                       help='Call the function training_with_seed_incentive')
+    parser.add_argument('--agent', type=str, default='Vanilla',
+                       help='Vanilla or Incentive')
     
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
@@ -43,7 +43,7 @@ def main():
     seed=args.seed,
     steps=args.steps,
     save_dir=args.save_dir,
-    incentive=args.incentive)
+    agent=args.agent)
        
     print("\n" + "="*60)
     print("EXPERIMENT COMPLETE!")
