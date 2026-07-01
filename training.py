@@ -20,6 +20,8 @@ from utils import set_seed
 
 
 def train_with_seed_incentive(seed=42, steps=1_000_000, save_dir = 'results_incentive'):  
+
+    os.makedirs(save_dir, exist_ok=True)
     
     set_seed(seed=seed)
 
@@ -91,12 +93,12 @@ def train_with_seed_incentive(seed=42, steps=1_000_000, save_dir = 'results_ince
                 #kappa = info.get('kappa', None)
             kappa = 1
             alpha = 0.05
-            if kappa is not None and kappa > 0 and t > 50000: #50000
+            if kappa is not None and kappa > 0 and t > 50000: 
                 #episode_q_before.append(q_values.copy())
                 #episode_cue_q.append(cue_q_values.copy())
-                #q_values = q_values * (1 + alpha * kappa * cue_q_values)
+                q_values = q_values * (1 + alpha * kappa * cue_q_values)
 
-                episode_q_after.append(q_values.copy())
+                #episode_q_after.append(q_values.copy())
 
             a = int(np.argmax(q_values)) 
             
@@ -217,9 +219,11 @@ def train_with_seed(seed=42,
                     steps=1_000_000,
                     save_dir = 'results',
                     agent = 'Vanilla'):
+    
+    os.makedirs(save_dir, exist_ok=True)
 
     if agent == 'Incentive':
-        train_with_seed_incentive(seed = seed, steps=steps, save_dir = save_dir)
+        train_with_seed_incentive(seed = seed, steps=steps, save_dir = 'results_incentive')
         return
     
     set_seed(seed=seed)
