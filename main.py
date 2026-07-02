@@ -4,7 +4,7 @@
 # In[1]:
 
 
-from training import train_with_seed
+from training import complete_training
 from utils import set_seed
 
 import argparse
@@ -18,7 +18,7 @@ def main():
     # Experiment settings
     parser.add_argument('--num_seeds', type=int, default=5,
                        help='Number of seeds for training')
-    parser.add_argument('--steps', type=int, default=5_000,
+    parser.add_argument('--steps', type=int, default=1_000_000,
                        help='Total training steps per seed')
     parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['Vanilla', 'Incentive'],
                        choices = ['Vanilla', 'Incentive'],
@@ -53,6 +53,12 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# In[ ]:
+
+
+main()
 
 
 # In[ ]:

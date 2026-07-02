@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[3]:
 
 
 import torch
@@ -214,7 +214,7 @@ def train_with_seed_incentive(seed=42,
     return net, all_metrics
 
 
-# In[13]:
+# In[4]:
 
 
 def train_with_seed(seed=42, 
@@ -338,12 +338,12 @@ def train_with_seed(seed=42,
     return net, all_metrics
 
 
-# In[ ]:
+# In[15]:
 
 
 def complete_training(num_seeds=5, 
                    training_steps=1_000_000,
-                   agent_styles=['Vanilla', 'Incentive']
+                   agent_styles=['Vanilla', 'Incentive'],
                    save_dir='results'):
 
     os.makedirs(save_dir, exist_ok=True)
@@ -369,13 +369,14 @@ def complete_training(num_seeds=5,
                     seed=seed,
                     steps=training_steps,
                     #save_dir=f"{save_dir}/{agent_style}",  # Separate folder per style
-                    agent_style=agent_style, 
+                    agent=agent_style, )
                     #clip_rewards=clip_rewards)
                      
-                    style_results.append({
-                    'seed': seed,
-                    #'rewards': rewards,
-                    'metrics': metrics})
+                style_results['training'].append({
+                'seed': seed,
+                #'rewards': rewards,
+                'metrics': metrics})
+                        
             all_results[agent_style] = style_results
 
         if agent_style == 'Incentive':
@@ -384,10 +385,10 @@ def complete_training(num_seeds=5,
                 seed=seed,
                 steps=training_steps,
                 #save_dir=f"{save_dir}/{agent_style}",  # Separate folder per style
-                agent_style=agent_style, 
+                )
                 #clip_rewards=clip_rewards)    
                 
-                style_results.append({
+                style_results['training'].append({
                     'seed': seed,
                     #'rewards': rewards,
                     'metrics': metrics})           
@@ -396,5 +397,11 @@ def complete_training(num_seeds=5,
 
     final_path = os.path.join(save_dir, 'results.pkl')
     with open(final_path, 'wb') as f:
-        pickle.dump(all_metrics, f)
+        pickle.dump(all_results, f)
+
+
+# In[ ]:
+
+
+
 
