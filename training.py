@@ -18,9 +18,12 @@ from replay_buffer import ReplayBuffer
 from env import make_env_with_metrics
 from utils import set_seed
 
-def train_with_seed_incentive(seed=42, steps=1_000_000, save_dir = 'results_incentive'):  
+def train_with_seed_incentive(seed=42, 
+                              steps=1_000_000, 
+                              #save_dir = 'results_incentive'
+                             ):  
 
-    os.makedirs(save_dir, exist_ok=True)
+    #os.makedirs(save_dir, exist_ok=True)
     
     set_seed(seed=seed)
 
@@ -204,11 +207,11 @@ def train_with_seed_incentive(seed=42, steps=1_000_000, save_dir = 'results_ince
     
     bar.close()   
 
-    final_path = os.path.join(save_dir, 'results_incentive.pkl')
-    with open(final_path, 'wb') as f:
-        pickle.dump(all_metrics, f)
+    #final_path = os.path.join(save_dir, 'results_incentive.pkl')
+    #with open(final_path, 'wb') as f:
+        #pickle.dump(all_metrics, f)
         
-    #return all_metrics
+    return net, all_metrics
 
 
 # In[13]:
@@ -216,10 +219,10 @@ def train_with_seed_incentive(seed=42, steps=1_000_000, save_dir = 'results_ince
 
 def train_with_seed(seed=42, 
                     steps=1_000_000,
-                    save_dir = 'results',
+                    #save_dir = 'results',
                     agent = 'Vanilla'):
     
-    os.makedirs(save_dir, exist_ok=True)
+    #os.makedirs(save_dir, exist_ok=True)
 
     if agent == 'Incentive':
         train_with_seed_incentive(seed = seed, steps=steps, save_dir = 'results_incentive')
@@ -328,9 +331,70 @@ def train_with_seed(seed=42,
     
     bar.close()    
 
+    #final_path = os.path.join(save_dir, 'results.pkl')
+    #with open(final_path, 'wb') as f:
+        #pickle.dump(all_metrics, f)
+        
+    return net, all_metrics
+
+
+# In[ ]:
+
+
+def complete_traiing(num_seeds=5, 
+                   training_steps=1_000_000,
+                   agent_styles=['Vanilla', 'Incentive']
+                   save_dir='results'):
+
+    os.makedirs(save_dir, exist_ok=True)
+    
+    all_results = {}
+
+    # Train each agent style
+    for agent_style in agent_styles:
+        print(f"\n{'='*60}")
+        print(f"TRAINING AGENT STYLE: {agent_style}")
+        print(f"{'='*60}\n")
+        
+        style_results = {
+            'training': []
+        }
+        
+        # Train with multiple seeds
+        seeds = [1, 42, 123, 456, 789][:num_seeds]
+
+        if agent_style == 'Vanilla': 
+            for seed in seeds: 
+                net, metrics = train_with_seed(
+                    seed=seed,
+                    steps=training_steps,
+                    #save_dir=f"{save_dir}/{agent_style}",  # Separate folder per style
+                    agent_style=agent_style, 
+                    #clip_rewards=clip_rewards)
+                     
+                    style_results.append({
+                    'seed': seed,
+                    #'rewards': rewards,
+                    'metrics': metrics})
+            00all_results[agent_style] = style_results
+
+        if agent_style == 'Incentive':
+            for seed in seeds:    
+                net, metrics = train_with_seed_incentive(
+                seed=seed,
+                steps=training_steps,
+                #save_dir=f"{save_dir}/{agent_style}",  # Separate folder per style
+                agent_style=agent_style, 
+                #clip_rewards=clip_rewards)    
+                
+                style_results.append({
+                    'seed': seed,
+                    #'rewards': rewards,
+                    'metrics': metrics})           
+        
+            all_results[agent_style] = style_results
+
     final_path = os.path.join(save_dir, 'results.pkl')
     with open(final_path, 'wb') as f:
         pickle.dump(all_metrics, f)
-        
-    #return all_metrics
 

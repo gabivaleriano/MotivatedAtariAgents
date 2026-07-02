@@ -16,12 +16,13 @@ def main():
     parser = argparse.ArgumentParser(description='Train DQN on Ms. Pac-Man')
     
     # Experiment settings
-    parser.add_argument('--seed', type=int, default=42,
-                       help='Seed for runing exp')
-    parser.add_argument('--steps', type=int, default=1_000_000,
+    parser.add_argument('--num_seeds', type=int, default=5,
+                       help='Number of seeds for training')
+    parser.add_argument('--steps', type=int, default=5_000,
                        help='Total training steps per seed')
-    parser.add_argument('--agent', type=str, default='Vanilla',
-                       help='Vanilla or Incentive')
+    parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['Vanilla', 'Incentive'],
+                       choices = ['Vanilla', 'Incentive'],
+                       help='List with agents to be trained. Options: Vanilla, Incentive')
     
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
@@ -33,17 +34,17 @@ def main():
     print("="*60)
     print("MS. PAC-MAN DQN EXPERIMENT")
     print("="*60)
-    print(f"Seeds: {args.seed}")
+    print(f"Number of seeds: {args.num_seeds}")
     print(f"Training steps: {args.steps:,}")
     print(f"Save directory: {args.save_dir}")
     print("="*60)
     print()
 
-    train_with_seed(
-    seed=args.seed,
+    complete_training(
+    nun_seeds=args.num_seeds,
     steps=args.steps,
     save_dir=args.save_dir,
-    agent=args.agent)
+    agent_styles=args.agent_styles)
        
     print("\n" + "="*60)
     print("EXPERIMENT COMPLETE!")

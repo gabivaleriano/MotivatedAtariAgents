@@ -116,7 +116,7 @@ class MetricsWrapper(gym.Wrapper):
         # Calculate metrics at episode end
         if terminated or truncated:            
             metrics = self.calculate_metrics()
-            metrics['reward'] = reward  
+            #metrics['reward'] = reward  
             info['metrics'] = metrics
         
         return obs, reward, terminated, truncated, info       
