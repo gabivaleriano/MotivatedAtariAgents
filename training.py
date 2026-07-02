@@ -341,7 +341,7 @@ def train_with_seed(seed=42,
 # In[ ]:
 
 
-def complete_traiing(num_seeds=5, 
+def complete_training(num_seeds=5, 
                    training_steps=1_000_000,
                    agent_styles=['Vanilla', 'Incentive']
                    save_dir='results'):
@@ -376,7 +376,7 @@ def complete_traiing(num_seeds=5,
                     'seed': seed,
                     #'rewards': rewards,
                     'metrics': metrics})
-            00all_results[agent_style] = style_results
+            all_results[agent_style] = style_results
 
         if agent_style == 'Incentive':
             for seed in seeds:    
