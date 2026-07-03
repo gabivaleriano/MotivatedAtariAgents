@@ -16,7 +16,7 @@ def main():
     parser = argparse.ArgumentParser(description='Train DQN on Ms. Pac-Man')
     
     # Experiment settings
-    parser.add_argument('--num_seeds', type=int, default=5,
+    parser.add_argument('--num_seeds', type=int, default=1,
                        help='Number of seeds for training')
     parser.add_argument('--steps', type=int, default=1_000_000,
                        help='Total training steps per seed')
@@ -41,7 +41,7 @@ def main():
     print()
 
     complete_training(
-    nun_seeds=args.num_seeds,
+    num_seeds=args.num_seeds,
     steps=args.steps,
     save_dir=args.save_dir,
     agent_styles=args.agent_styles)
@@ -53,12 +53,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# In[ ]:
-
-
-main()
 
 
 # In[ ]:

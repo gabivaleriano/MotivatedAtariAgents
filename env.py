@@ -5,7 +5,7 @@
 
 
 from stable_baselines3.common.atari_wrappers import MaxAndSkipEnv
-from wrappers import RestrictActionsWrapper, MetricsWrapper
+from wrappers import RestrictActionsWrapper, MetricsWrapper, LifeLossWrapper
 import ale_py
 import gymnasium as gym
 from gymnasium.wrappers import TransformReward
@@ -18,6 +18,7 @@ def make_env_with_metrics(seed):
         
     env = gym.make("ALE/MsPacman-v5", obs_type="rgb", frameskip=4)  # Create the Ms. Pac-Man game environment     
     env = apply_reward_shaping(env)
+    env = LifeLossWrapper(env)
     env = gym.wrappers.RecordEpisodeStatistics(env) # Wrapper that records episode statistics    
     env = MetricsWrapper(env)   
     env = gym.wrappers.ResizeObservation(env, (84, 84)) # Resize each frame to 84x84 pixels 

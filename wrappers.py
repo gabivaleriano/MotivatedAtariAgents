@@ -25,6 +25,33 @@ class RestrictActionsWrapper(gym.Wrapper):
 # In[ ]:
 
 
+class LifeLossWrapper(gym.Wrapper):
+
+    def __init__(self, env, raw_tracker=None):
+        super().__init__(env)
+   
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        ram = self.env.unwrapped.ale.getRAM()
+        self._lives = ram[123]
+        return obs, info
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        ram = self.env.unwrapped.ale.getRAM()
+        current_lives = ram[123]
+        
+        if current_lives < self._lives:
+            reward -= 10
+            #terminated = True  
+        
+        self._lives = current_lives
+        return obs, reward, terminated, truncated, info
+
+
+# In[ ]:
+
+
 class MetricsWrapper(gym.Wrapper):
     """Wrapper that tracks RAM state and calculates metrics"""
     

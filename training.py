@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
+# In[1]:
 
 
 import torch
@@ -214,7 +214,7 @@ def train_with_seed_incentive(seed=42,
     return net, all_metrics
 
 
-# In[4]:
+# In[2]:
 
 
 def train_with_seed(seed=42, 
@@ -338,11 +338,11 @@ def train_with_seed(seed=42,
     return net, all_metrics
 
 
-# In[15]:
+# In[3]:
 
 
 def complete_training(num_seeds=5, 
-                   training_steps=1_000_000,
+                   steps=1_000_000,
                    agent_styles=['Vanilla', 'Incentive'],
                    save_dir='results'):
 
@@ -367,7 +367,7 @@ def complete_training(num_seeds=5,
             for seed in seeds: 
                 net, metrics = train_with_seed(
                     seed=seed,
-                    steps=training_steps,
+                    steps=steps,
                     #save_dir=f"{save_dir}/{agent_style}",  # Separate folder per style
                     agent=agent_style, )
                     #clip_rewards=clip_rewards)
@@ -383,7 +383,7 @@ def complete_training(num_seeds=5,
             for seed in seeds:    
                 net, metrics = train_with_seed_incentive(
                 seed=seed,
-                steps=training_steps,
+                steps=steps,
                 #save_dir=f"{save_dir}/{agent_style}",  # Separate folder per style
                 )
                 #clip_rewards=clip_rewards)    
