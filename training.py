@@ -557,17 +557,8 @@ def evaluate_agent_incentive(net, cue_net,
     return eval_metrics
 
 
-# In[6]:
 
 
-complete_training(num_seeds=1, 
-                   steps=60000,
-                   agent_styles=['Vanilla', 'Incentive'],
-                   eval_episodes = 10,
-                   save_dir='results')
-
-
-# In[ ]:
 
 
 
