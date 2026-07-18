@@ -16,9 +16,9 @@ def main():
     parser = argparse.ArgumentParser(description='Train DQN on Ms. Pac-Man')
     
     # Experiment settings
-    parser.add_argument('--num_seeds', type=int, default=2,
+    parser.add_argument('--num_seeds', type=int, default=5,
                        help='Number of seeds for training')
-    parser.add_argument('--steps', type=int, default=1_000,
+    parser.add_argument('--steps', type=int, default=1_000_000,
                        help='Total training steps per seed')
     parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['Vanilla', 'Incentive'],
                        choices = ['Vanilla', 'Incentive'],
