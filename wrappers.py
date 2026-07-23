@@ -42,7 +42,7 @@ class LifeLossWrapper(gym.Wrapper):
         current_lives = ram[123]
         
         if current_lives < self._lives:
-            reward -= 0
+            reward -= 200
             #terminated = True  
         
         self._lives = current_lives
