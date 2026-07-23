@@ -27,7 +27,7 @@ def main():
                        help='Number episodes for evaluation')
     
     # Output settings
-    parser.add_argument('--save-dir', type=str, default='results',
+    parser.add_argument('--save-dir', type=str, default='results_200',
                        help='Directory to save results')
     
     args = parser.parse_args()
