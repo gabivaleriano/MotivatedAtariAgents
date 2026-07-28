@@ -34,6 +34,7 @@ class LifeLossWrapper(gym.Wrapper):
         obs, info = self.env.reset(**kwargs)
         ram = self.env.unwrapped.ale.getRAM()
         self._lives = ram[123]
+        self.loss = 10
         return obs, info
 
     def step(self, action):
@@ -42,10 +43,13 @@ class LifeLossWrapper(gym.Wrapper):
         current_lives = ram[123]
         
         if current_lives < self._lives:
-            reward -= 10
-            #terminated = True  
+            reward -= self.loss
+
+        if terminated or truncated:
+            reward -= self.loss
         
         self._lives = current_lives
+        
         return obs, reward, terminated, truncated, info
 
 
@@ -55,11 +59,11 @@ class LifeLossWrapper(gym.Wrapper):
 class MetricsWrapper(gym.Wrapper):
     """Wrapper that tracks RAM state and calculates metrics"""
     
-    def __init__(self, env, raw_tracker=None):
+    def __init__(self, env, agent = 'Vanilla', raw_tracker=None):
         super().__init__(env)
         
         # Episode tracking
-        self.episode_positions = []
+        self.episode_positions = {}
         self.episode_steps = 0
         self.pellets_eaten = 0
         
@@ -73,13 +77,21 @@ class MetricsWrapper(gym.Wrapper):
         self.past_121 = 0
         self.power_pellets_eaten = 0
         self.ghosts_eaten = 0
+
+        # Position tracker
+        self.positions = set()
+        
+        self.agent = agent        
+        self.game_reward = 0
+        self.drive_reward = 0 
+        self.extrinsic_reward = 0
         
     def reset(self, **kwargs):
         """Reset episode tracking"""
         ram = self.env.unwrapped.ale.getRAM()
         
         obs, info = self.env.reset(**kwargs)        
-        self.episode_positions = []
+        self.episode_positions = {}
         self.episode_steps = 0
         self.pellets_eaten = 0     
         self.past_119 = int(ram[119])  
@@ -90,19 +102,26 @@ class MetricsWrapper(gym.Wrapper):
         self.past_121 = int(ram[121])
         self.power_pellets_eaten = 0
         self.ghosts_eaten = 0
+        self.game_reward = 0 
+        self.drive_reward = 0 
+        self.extrinsic_reward = 0
                
         return obs, info
     
     def step(self, action):
         """Step environment and track metrics"""
         obs, reward, terminated, truncated, info = self.env.step(action)
-
         ram = self.env.unwrapped.ale.getRAM()
         
         # Store position (from RAM)
         x = int(ram[10])
         y = int(ram[16])
-        self.episode_positions.append((x, y))
+        position = (x,y)
+
+        if position in self.episode_positions.keys():
+            self.episode_positions[position] += 1
+        else:
+            self.episode_positions[position] = 1
 
         # Increase step
         self.episode_steps += 1
@@ -139,11 +158,22 @@ class MetricsWrapper(gym.Wrapper):
         self.past_121 = current_121
 
         info['R*'] = self.pellets_eaten
+
+        # if agent == vanila info does not contain drive_reward
+        if self.agent == "Vanilla":
+            self.extrinsic_reward += reward # extrinsic = game reward + penalty
+            if reward > 0:
+                self.game_reward += reward
+                
+        # else, it has passed through combine rewards        
+        else:
+            self.game_reward += info['game_reward']
+            self.drive_reward += info['drive_reward']
+            self.extrinsic_reward += info['extrinsic_reward']
         
         # Calculate metrics at episode end
         if terminated or truncated:            
-            metrics = self.calculate_metrics()
-            #metrics['reward'] = reward  
+            metrics = self.calculate_metrics()  
             info['metrics'] = metrics
         
         return obs, reward, terminated, truncated, info       
@@ -152,16 +182,9 @@ class MetricsWrapper(gym.Wrapper):
     def calculate_metrics(self):
         """Calculate all metrics for the episode"""
        
-        # 4. Backtracking Rate
-        backtrack_count = 0
-        visited_positions = set()
-        
-        for pos in self.episode_positions:
-            if pos in visited_positions:
-                backtrack_count += 1
-            visited_positions.add(pos)
-        
-        backtrack_rate = backtrack_count / self.episode_steps if self.episode_steps > 0 else 0
+        # 4. Backtracking Rate        
+        num_positions = len(self.episode_positions)        
+        backtrack_rate = 1 - (num_positions / self.episode_steps) if self.episode_steps > 0 else 0
                
         return {
             'lifetime': self.episode_steps,
@@ -170,20 +193,30 @@ class MetricsWrapper(gym.Wrapper):
             'pellets_eaten': self.pellets_eaten,
             'power_pellets_eaten': self.power_pellets_eaten,
             'ghosts_eaten': self.ghosts_eaten,
+            'game_reward': self.game_reward,
+            'drive_reward': self.drive_reward,
+            'extrinsic_reward': self.extrinsic_reward,
+            'dic_positions': self.episode_positions
         }     
 
 
 # In[ ]:
 
 
-def scale_reward(r):
-    """Transform rewards to reasonable range"""
-    if r <= 0:
-        return r # negative reward
-    elif r >= 10:
-        return r / 10 
+class CombineRewardWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
 
-def apply_reward_shaping(env):
-    """Apply reward shaping to environment"""
-    return TransformReward(env, scale_reward)
+    def step(self, action):
+        obs, reward, term, trunc, info = self.env.step(action)
+        
+        drive_reward = info.get("drive_reward", 0.0)
+        
+        total = reward + drive_reward
+        
+        info["game_reward"] = reward if reward > 0 else 0        
+        info["extrinsic_reward"] = reward
+        info["combined_reward"] = total
+        
+        return obs, total, term, trunc, info
 

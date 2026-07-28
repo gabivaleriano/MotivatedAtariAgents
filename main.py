@@ -20,10 +20,10 @@ def main():
                        help='Number of seeds for training')
     parser.add_argument('--steps', type=int, default=1_000,
                        help='Total training steps per seed')
-    parser.add_argument('--agent_styles', type=str, nargs ='+',  default= ['Vanilla', 'Incentive'],
-                       choices = ['Vanilla', 'Incentive'],
+    parser.add_argument('--agents', type=str, nargs ='+',  default= ['Vanilla', 'Incentive'],
+                       choices = ['Vanilla', 'Incentive','Hull'],
                        help='List with agents to be trained. Options: Vanilla, Incentive')
-    parser.add_argument('--eval_episodes', type=int, default=100,
+    parser.add_argument('--eval_episodes', type=int, default=5,
                        help='Number episodes for evaluation')
     
     # Output settings
@@ -46,7 +46,7 @@ def main():
     num_seeds=args.num_seeds,
     steps=args.steps,
     save_dir=args.save_dir,
-    agent_styles=args.agent_styles,
+    agents=args.agents,
     eval_episodes=args.eval_episodes)
        
     print("\n" + "="*60)

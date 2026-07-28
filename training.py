@@ -26,7 +26,7 @@ def train_with_seed_incentive(seed=42,
     print(f"Using device: {device}")
     
     # Create environment
-    env = make_env_with_metrics(seed)
+    env = make_env_with_metrics(seed, agent = 'Incentive')
     
     # Create networks
     net = DQN(env.action_space.n).to(device)
@@ -120,19 +120,9 @@ def train_with_seed_incentive(seed=42,
             if 'metrics' in info:
                 metrics = info['metrics']
                 metrics['episode'] = episode_count
-                #metrics['step_history'] = info["episode"].get("step_history", {})
-                metrics['total reward'] = info["episode"].get("r", 0)
-
-                #metrics['q_before']  = episode_q_before.copy()
-                #metrics['q_after']   = episode_q_after.copy()
-                #metrics['cue_q']  = episode_cue_q.copy()
-                    
-
+                metrics['total reward'] = info["episode"].get("r", 0)                   
+                
                 all_metrics.append(metrics)
-        
-
-        #episode_q_before.clear()
-        #episode_q_after.clear()
         
         # Training step main dqn
         if len(buf) >= 10000 and t % 4 == 0:
@@ -152,13 +142,11 @@ def train_with_seed_incentive(seed=42,
                 tgt = r_batch + 0.99 * nq * (1 - d)
             
             # Update network
-            #loss = F.mse_loss(q, tgt)
             loss = F.smooth_l1_loss(q, tgt)  # Huber loss, beta=1.0 by default -> clips TD error to [-1,1]
             opt.zero_grad()
             loss.backward()
-            #torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=10)
             opt.step()
-            # Huber loss already bounds the gradient contribution per-sample at the error level
+
             
         # Update target network
         if t % 10000 == 0:
@@ -182,13 +170,10 @@ def train_with_seed_incentive(seed=42,
                 tgt = r_batch + 0.99 * nq * (1 - d)
             
             # Update network
-            #loss = F.mse_loss(q, tgt)
             loss = F.smooth_l1_loss(q, tgt)  # Huber loss, beta=1.0 by default -> clips TD error to [-1,1]
             cue_opt.zero_grad()
             loss.backward()
-            #torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=10)
             cue_opt.step()
-            # Huber loss already bounds the gradient contribution per-sample at the error level
             
         # Update target network
         if t % 10000 == 0:
@@ -201,11 +186,7 @@ def train_with_seed_incentive(seed=42,
             bar.set_postfix({"eps": f"{eps(t):.2f}"})#, "reward": f"{recent:.0f}"})
     
     bar.close()   
-
-    #final_path = os.path.join(save_dir, 'results_incentive.pkl')
-    #with open(final_path, 'wb') as f:
-        #pickle.dump(all_metrics, f)
-        
+       
     return net, cue_net, all_metrics
 
 
@@ -226,7 +207,7 @@ def train_with_seed(seed=42,
     print(f"Using device: {device}")
     
     # Create environment
-    env = make_env_with_metrics(seed)
+    env = make_env_with_metrics(seed, agent)
     
     # Create networks
     net = DQN(env.action_space.n).to(device)
@@ -234,10 +215,8 @@ def train_with_seed(seed=42,
     target.load_state_dict(net.state_dict())
     
     # Optimizer and buffer
-    #opt = optim.Adam(net.parameters(), lr=6.25e-5, eps=0.01/32)
     opt = optim.RMSprop(net.parameters(), lr=0.00025, alpha=0.95, eps=0.01, momentum=0.0)
     buf = ReplayBuffer()
-    #eps = lambda t: 0.1 + 0.9 * np.exp(-t / 500000) 
     eps = lambda t: max(0.1, 1.0 - 0.9 * (t / 1_000_000))
     
     state,_ = env.reset(seed=seed)
@@ -282,7 +261,6 @@ def train_with_seed(seed=42,
             if 'metrics' in info:
                 metrics = info['metrics']
                 metrics['episode'] = episode_count
-                #metrics['step_history'] = info["episode"].get("step_history", {})
                 metrics['total reward'] = info["episode"].get("r", 0)
 
                 all_metrics.append(metrics)
@@ -309,9 +287,7 @@ def train_with_seed(seed=42,
             loss = F.smooth_l1_loss(q, tgt)  # Huber loss, beta=1.0 by default -> clips TD error to [-1,1]
             opt.zero_grad()
             loss.backward()
-            # torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=10)
             opt.step()
-            # Huber loss already bounds the gradient contribution per-sample at the error level
         
         # Update target network
         if t % 10000 == 0:
@@ -322,11 +298,7 @@ def train_with_seed(seed=42,
             bar.set_postfix({"eps": f"{eps(t):.2f}"})
     
     bar.close()    
-
-    #final_path = os.path.join(save_dir, 'results.pkl')
-    #with open(final_path, 'wb') as f:
-        #pickle.dump(all_metrics, f)
-        
+    
     return net, all_metrics
 
 
@@ -335,7 +307,7 @@ def train_with_seed(seed=42,
 
 def complete_training(num_seeds=5, 
                    steps=1_000_000,
-                   agent_styles=['Vanilla', 'Incentive'],
+                   agents=['Vanilla', 'Incentive'],
                    eval_episodes = 100,
                    save_dir='results'):
 
@@ -343,13 +315,13 @@ def complete_training(num_seeds=5,
     
     all_results = {}
 
-    # Train each agent style
-    for agent_style in agent_styles:
+    # Train each agent 
+    for agent in agents:
         print(f"\n{'='*60}")
-        print(f"TRAINING AGENT STYLE: {agent_style}")
+        print(f"TRAINING AGENT: {agent}")
         print(f"{'='*60}\n")
         
-        style_results = {
+        agent_results = {
             'training': [],
             'evaluation': []
         }
@@ -357,14 +329,14 @@ def complete_training(num_seeds=5,
         # Train with multiple seeds
         seeds = [1, 42, 123, 456, 789][:num_seeds]
 
-        if agent_style == 'Vanilla': 
+        if agent == 'Vanilla' or agent == 'Hull': 
             for seed in seeds: 
                 net, metrics = train_with_seed(
                     seed=seed,
                     steps=steps,
-                    agent=agent_style, )
+                    agent=agent )
                      
-                style_results['training'].append({
+                agent_results['training'].append({
                 'seed': seed,
                 'metrics': metrics})
 
@@ -373,24 +345,24 @@ def complete_training(num_seeds=5,
                     net=net,
                     num_episodes=eval_episodes,
                     base_seed=seed * 1000,
-                    agent_style = agent_style
+                    agent = agent
                 )
                 
-                style_results['evaluation'].append({
+                agent_results['evaluation'].append({
                     'train_seed': seed,
                     'eval_metrics': eval_metrics
                 })
                         
-            all_results[agent_style] = style_results
+            all_results[agent] = agent_results
 
-        if agent_style == 'Incentive':
+        if agent == 'Incentive':
             for seed in seeds:    
                 net, cue_net, metrics = train_with_seed_incentive(
                 seed=seed,
                 steps=steps,
                 )   
                 
-                style_results['training'].append({
+                agent_results['training'].append({
                     'seed': seed,
                     'metrics': metrics})           
 
@@ -400,15 +372,15 @@ def complete_training(num_seeds=5,
                     cue_net = cue_net,
                     num_episodes=eval_episodes,
                     base_seed=seed * 1000,
-                    agent_style = agent_style
+                    agent = agent
                 )
                 
-                style_results['evaluation'].append({
+                agent_results['evaluation'].append({
                     'train_seed': seed,
                     'eval_metrics': eval_metrics
                 })
                 
-            all_results[agent_style] = style_results
+            all_results[agent] = agent_results
 
     final_path = os.path.join(save_dir, 'results.pkl')
     with open(final_path, 'wb') as f:
@@ -422,17 +394,17 @@ def evaluate_agent(net,
                    num_episodes=100, 
                    base_seed=42, 
                    deterministic=True,
-                   agent_style = 'Vanilla'):
+                   agent = 'Vanilla'):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     print(f"\n{'='*60}")
-    print(f"Evaluating Vanilla agent for {num_episodes} episodes")
+    print(f"Evaluating {agent} agent for {num_episodes} episodes")
     print(f"{'='*60}\n")
 
     
-    env = make_env_with_metrics(base_seed)
+    env = make_env_with_metrics(base_seed, agent)
     net.eval()
     
     eval_metrics = []
@@ -467,8 +439,10 @@ def evaluate_agent(net,
             
             if done and 'metrics' in info:
                 metrics = info['metrics']
+                metrics['total reward'] = info["episode"].get("r", 0)
                 metrics['eval_episode'] = episode
                 metrics['eval_seed'] = episode_seed
+                    
                 eval_metrics.append(metrics)
     
     net.train()
@@ -482,7 +456,7 @@ def evaluate_agent_incentive(net, cue_net,
                    num_episodes=100, 
                    base_seed=42, 
                    deterministic=True,
-                   agent_style = 'Vanilla'):
+                   agent = 'Incentive'):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -549,26 +523,13 @@ def evaluate_agent_incentive(net, cue_net,
             
             if done and 'metrics' in info:
                 metrics = info['metrics']
+                metrics['total reward'] = info["episode"].get("r", 0)
                 metrics['eval_episode'] = episode
                 metrics['eval_seed'] = episode_seed
+                
                 eval_metrics.append(metrics)
-    
+
+    cue_net.train()
     net.train()
     return eval_metrics
-
-
-# In[6]:
-
-
-complete_training(num_seeds=1, 
-                   steps=60000,
-                   agent_styles=['Vanilla', 'Incentive'],
-                   eval_episodes = 10,
-                   save_dir='results')
-
-
-# In[ ]:
-
-
-
 
