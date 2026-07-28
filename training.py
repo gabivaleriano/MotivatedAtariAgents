@@ -329,7 +329,7 @@ def complete_training(num_seeds=5,
         # Train with multiple seeds
         seeds = [1, 42, 123, 456, 789][:num_seeds]
 
-        if agent == 'Vanilla' or agent == 'Hull': 
+        if agent == 'Vanilla' or agent == 'Hull' or agent == 'WantLike': 
             for seed in seeds: 
                 net, metrics = train_with_seed(
                     seed=seed,

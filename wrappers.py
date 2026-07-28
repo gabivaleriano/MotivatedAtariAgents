@@ -85,6 +85,7 @@ class MetricsWrapper(gym.Wrapper):
         self.game_reward = 0
         self.drive_reward = 0 
         self.extrinsic_reward = 0
+        self.like_reward = 0
         
     def reset(self, **kwargs):
         """Reset episode tracking"""
@@ -104,6 +105,7 @@ class MetricsWrapper(gym.Wrapper):
         self.ghosts_eaten = 0
         self.game_reward = 0 
         self.drive_reward = 0 
+        self.like_reward = 0
         self.extrinsic_reward = 0
                
         return obs, info
@@ -170,6 +172,9 @@ class MetricsWrapper(gym.Wrapper):
             self.game_reward += info['game_reward']
             self.drive_reward += info['drive_reward']
             self.extrinsic_reward += info['extrinsic_reward']
+            
+            if self.agent == 'WantLike':
+                self.like_reward += info['like_reward']        
         
         # Calculate metrics at episode end
         if terminated or truncated:            
@@ -195,6 +200,7 @@ class MetricsWrapper(gym.Wrapper):
             'ghosts_eaten': self.ghosts_eaten,
             'game_reward': self.game_reward,
             'drive_reward': self.drive_reward,
+            'like_reward': self.like_reward,
             'extrinsic_reward': self.extrinsic_reward,
             'dic_positions': self.episode_positions
         }     
@@ -204,15 +210,20 @@ class MetricsWrapper(gym.Wrapper):
 
 
 class CombineRewardWrapper(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, agent = 'Hull'):
         super().__init__(env)
+        self.agent = agent
 
     def step(self, action):
         obs, reward, term, trunc, info = self.env.step(action)
         
         drive_reward = info.get("drive_reward", 0.0)
+        intrinsic_reward = drive_reward
+
+        if self.agent == 'WantLike':
+            intrinsic_reward += info['like_reward'] 
         
-        total = reward + drive_reward
+        total = reward + intrinsic_reward
         
         info["game_reward"] = reward if reward > 0 else 0        
         info["extrinsic_reward"] = reward
