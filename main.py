@@ -18,9 +18,9 @@ def main():
     # Experiment settings
     parser.add_argument('--num_seeds', type=int, default=2,
                        help='Number of seeds for training')
-    parser.add_argument('--steps', type=int, default=1_000,
+    parser.add_argument('--steps', type=int, default=1_000_000,
                        help='Total training steps per seed')
-    parser.add_argument('--agents', type=str, nargs ='+',  default= ['Vanilla', 'Incentive'],
+    parser.add_argument('--agents', type=str, nargs ='+',  default= ['Vanilla', 'Hull'],
                        choices = ['Vanilla', 'Incentive','Hull'],
                        help='List with agents to be trained. Options: Vanilla, Incentive')
     parser.add_argument('--eval_episodes', type=int, default=5,
