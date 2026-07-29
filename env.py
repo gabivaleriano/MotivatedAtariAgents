@@ -6,7 +6,7 @@
 
 from stable_baselines3.common.atari_wrappers import MaxAndSkipEnv
 from wrappers import RestrictActionsWrapper, MetricsWrapper, LifeLossWrapper, CombineRewardWrapper
-from agents import HullWrapper, WantLikeWrapper
+from agents import HullWrapper, WantLikeWrapper, IncentiveWrapper
 import ale_py
 import gymnasium as gym
 from gymnasium.wrappers import TransformReward
@@ -28,6 +28,10 @@ def make_env_with_metrics(seed, agent = 'Vanilla'):
     if agent == 'WantLike':
         env = WantLikeWrapper(env)
         env = CombineRewardWrapper(env,'WantLike')    
+
+    if agent == 'Incentive':
+        env = IncentiveWrapper(env)
+        env = CombineRewardWrapper(env,'Incentive')    
         
     env = gym.wrappers.RecordEpisodeStatistics(env) # Wrapper that records episode statistics  
     env = MetricsWrapper(env, agent = agent)   

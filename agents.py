@@ -120,3 +120,67 @@ class WantLikeWrapper(gym.Wrapper):
         obs, info = self.env.reset(**kwargs)      
         return obs, info  
 
+
+# In[ ]:
+
+
+class IncentiveWrapper(gym.Wrapper):
+# sem tolerância
+    
+    def __init__(self, env, raw_tracker=None):
+        super().__init__(env)
+        self.raw_tracker = raw_tracker
+        self.D = 30          # start at homeostasis
+        self.D_star = 30     # homeostasis level
+        self.D_max = 50
+        self.D_min = 0
+        self.prev_pos = (85, 98)
+        self.kappa = 1
+        self.past_119 = 0
+        self.past_lives = 0
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        ram = self.env.unwrapped.ale.getRAM()
+        current_119 = int(ram[119])
+
+        # 1. detect eating first (takes priority)
+        energy_delta = -0.1
+
+        Ril = 0
+
+        # 1. detect eating first (takes priority)
+        if current_119 != self.past_119:
+            energy_delta += 1
+            Ril = 1
+
+        self.past_119 = current_119
+
+        # 2. update drive
+        old_drive = self.D
+        self.D = np.clip(self.D + energy_delta, self.D_min, self.D_max)       
+
+        if self.D < self.D_star:
+            self.kappa = 1 + (self.D_star - self.D) / self.D_star  # in [0, 1]
+        else:
+            self.kappa = 1  # well-fed, no salience amplificatiom            
+
+        Ri = Ril
+
+        # Combine rewards
+        info["like_reward"] = Ril
+        info["kappa"] = self.kappa
+              
+        return obs, reward, terminated, truncated, info
+
+
+    def reset(self, **kwargs):
+       
+        # Reset episode-level trackers
+        self.D = 30          # start at homeostasis
+        self.kappa = 1
+        self.past_119 = 0
+
+        obs, info = self.env.reset(**kwargs)
+        return obs, info  
+

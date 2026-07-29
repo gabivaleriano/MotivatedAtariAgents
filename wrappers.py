@@ -170,11 +170,9 @@ class MetricsWrapper(gym.Wrapper):
         # else, it has passed through combine rewards        
         else:
             self.game_reward += info['game_reward']
-            self.drive_reward += info['drive_reward']
+            self.drive_reward += info.get('drive_reward',0.0)
             self.extrinsic_reward += info['extrinsic_reward']
-            
-            if self.agent == 'WantLike':
-                self.like_reward += info['like_reward']        
+            self.like_reward += info.get('like_reward',0.0)  
         
         # Calculate metrics at episode end
         if terminated or truncated:            
@@ -216,12 +214,10 @@ class CombineRewardWrapper(gym.Wrapper):
 
     def step(self, action):
         obs, reward, term, trunc, info = self.env.step(action)
-        
-        drive_reward = info.get("drive_reward", 0.0)
-        intrinsic_reward = drive_reward
 
-        if self.agent == 'WantLike':
-            intrinsic_reward += info['like_reward'] 
+        intrinsic_reward = 0        
+        intrinsic_reward += info.get('drive_reward',0.0) 
+        intrinsic_reward += info.get('like_reward',0.0) 
         
         total = reward + intrinsic_reward
         

@@ -56,9 +56,6 @@ def train_with_seed_incentive(seed=42,
     bar = tqdm(total=steps, desc=f"Seed {seed}")
 
     all_metrics = []
-    #episode_q_before = []   # q values before kappa adjustment
-    #episode_cue_q = []
-    #episode_q_after  = []   # q values after kappa adjustment  
     
     for t in range(1, steps + 1):
         # Epsilon-greedy action selection
@@ -86,17 +83,12 @@ def train_with_seed_incentive(seed=42,
                 probs = exp_vals / exp_vals.sum()
                 q_values = probs       
                 
-            #if agent_style == 'Incentive':
-                #kappa = info.get('kappa', None)
-            kappa = 1
+
+            kappa = info.get('kappa', None)
             alpha = 0.05
             if kappa is not None and kappa > 0 and t > 50000: 
-                #episode_q_before.append(q_values.copy())
-                #episode_cue_q.append(cue_q_values.copy())
                 q_values = q_values * (1 + alpha * kappa * cue_q_values)
-
-                #episode_q_after.append(q_values.copy())
-
+               
             a = int(np.argmax(q_values)) 
             
         # Environment step
@@ -466,7 +458,7 @@ def evaluate_agent_incentive(net, cue_net,
     print(f"{'='*60}\n")
 
     
-    env = make_env_with_metrics(base_seed)
+    env = make_env_with_metrics(base_seed, agent)
     net.eval()
     cue_net.eval()
     
@@ -504,7 +496,7 @@ def evaluate_agent_incentive(net, cue_net,
                 probs = exp_vals / exp_vals.sum()
                 q_values = probs
 
-                kappa = 1
+                kappa = info.get('kappa', None)
                 alpha = 0.05
                 if kappa is not None and kappa > 0: 
                     q_values = q_values * (1 + alpha * kappa * cue_q_values)
