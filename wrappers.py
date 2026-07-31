@@ -34,7 +34,7 @@ class LifeLossWrapper(gym.Wrapper):
         obs, info = self.env.reset(**kwargs)
         ram = self.env.unwrapped.ale.getRAM()
         self._lives = ram[123]
-        self.loss = 10
+        self.loss = 100
         return obs, info
 
     def step(self, action):
