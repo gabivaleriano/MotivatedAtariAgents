@@ -201,257 +201,39 @@ def train_with_seed_incentive(seed=42,
     return net, cue_net, all_metrics
 
 
-# In[2]:
-
-
-def train_with_seed_incentive(seed=42, 
-                              steps=1_000_000):     
-
-    cue_losses = []
-    cue_q_log = [] 
-    set_seed(seed=seed)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-    
-    # Create environment
-    env = make_env_with_metrics(seed, agent = 'Incentive')
-    
-    # Create networks
-    net = DQN(env.action_space.n).to(device)
-    target = DQN(env.action_space.n).to(device)
-    target.load_state_dict(net.state_dict())
-
-    # Create networks
-    cue_net = DQN(env.action_space.n).to(device)
-    #cue_target = DQN(env.action_space.n).to(device)
-    #cue_net.load_state_dict(cue_net.state_dict())
-    
-    # Optimizer and buffer
-    #opt = optim.Adam(net.parameters(), lr=6.25e-5, eps=0.01/32)
-    opt = optim.RMSprop(net.parameters(), lr=0.00025, alpha=0.95, eps=0.01, momentum=0.0)
-    cue_opt = optim.RMSprop(cue_net.parameters(), lr=0.00025, alpha=0.95, eps=0.01, momentum=0.0)
-    buf = ReplayBuffer()
-    #cue_buf = ReplayBuffer()
-    #eps = lambda t: 0.1 + 0.9 * np.exp(-t / 500000) 
-    eps = lambda t: max(0.1, 1.0 - 0.9 * (t / 1_000_000))
-    
-    state, _ = env.reset(seed=seed)
-    state = np.asarray(state)
-    info = {}
-    
-    episode_count = 0
-    
-    bar = tqdm(total=steps, desc=f"Seed {seed}")
-
-    all_metrics = []
-    
-    for t in range(1, steps + 1):
-        # Epsilon-greedy action selection
-        if random.random() < eps(t):
-            a = env.action_space.sample()
-
-        else:
-            with torch.no_grad():
-                q = net(torch.tensor(state, device=device).unsqueeze(0))
-                q_values = q.squeeze(0).cpu().numpy()    
-
-                cue_q = cue_net(torch.tensor(state, device=device).unsqueeze(0))
-                cue_q_values = cue_q.squeeze(0).cpu().numpy()  
-
-                # softmax normalization over cue_q_values
-                cue_q_values[0] = 0
-                remaining = cue_q_values[1:]
-                exp_vals = np.exp(remaining - np.max(remaining))  # subtract max for numerical stability
-                probs = exp_vals / exp_vals.sum()
-                cue_q_values[1:] = probs
-
-                # softmax normalization over q_values
-                aux = q_values
-                exp_vals = np.exp(aux - np.max(aux))  # subtract max for numerical stability
-                probs = exp_vals / exp_vals.sum()
-                q_values = probs       
-                
-
-            kappa = info.get('kappa', None)
-            alpha = 0.05
-            if kappa is not None and kappa > 0 and t > 50000: 
-                q_values = q_values * (1 + alpha * kappa * cue_q_values)
-               
-            a = int(np.argmax(q_values)) 
-            
-        # Environment step
-        ns, r, term, trunc, info = env.step(a)
-        ns = np.asarray(ns)
-        done = term or trunc
-        cue_reward = info['R*']
-
-        prev_state = state
-        next_state = ns
-        
-        # Store experience
-        buf.push(state, a, r, ns, done)
-        #cue_buf.push(state, a, cue_reward, ns, done)
-        state = ns
-        bar.update(1)
-        
-        # Episode ended
-        if done:
-            episode_count += 1
-            state, _ = env.reset(seed=seed)
-            state = np.asarray(state)
-
-            if 'metrics' in info:
-                metrics = info['metrics']
-                metrics['episode'] = episode_count
-                metrics['total reward'] = info["episode"].get("r", 0)                   
-                
-                all_metrics.append(metrics)
-        
-        # Training step main dqn
-        if len(buf) >= 10000 and t % 4 == 0:
-            s, a_batch, r_batch, ns, d = buf.sample(32)
-            s = torch.tensor(s, device=device)
-            ns = torch.tensor(ns, device=device)
-            a_batch = torch.tensor(a_batch, device=device).unsqueeze(1)
-            r_batch = torch.tensor(r_batch, device=device).unsqueeze(1)
-            d = torch.tensor(d, device=device).unsqueeze(1)
-            
-            # Compute Q-values
-            q = net(s).gather(1, a_batch)
-            
-            # Compute target
-            with torch.no_grad():
-                nq = target(ns).max(1)[0].unsqueeze(1)
-                tgt = r_batch + 0.99 * nq * (1 - d)
-            
-            # Update network
-            loss = F.smooth_l1_loss(q, tgt)  # Huber loss, beta=1.0 by default -> clips TD error to [-1,1]
-            opt.zero_grad()
-            loss.backward()
-            opt.step()
-
-            
-        # Update target network
-        if t % 10000 == 0:
-            target.load_state_dict(net.state_dict())
-        ############################Training cue dqn #################################################################
-
-        if t % 4 == 0:
-            #s, a_batch, r_batch, ns, d = cue_buf.sample(32)
-            #s = torch.tensor(s, device=device)
-            #ns = torch.tensor(ns, device=device)
-            #a_batch = torch.tensor(a_batch, device=device).unsqueeze(1)
-            #r_batch = torch.tensor(r_batch, device=device).unsqueeze(1)
-            #d = torch.tensor(d, device=device).unsqueeze(1)
-
-            s_t = torch.tensor(prev_state, device=device).unsqueeze(0)
-            a_t = torch.tensor([[a]], device=device)
-            ns_t = torch.tensor(next_state, device=device).unsqueeze(0)
-            
-            q_cue = cue_net(s_t).gather(1, a_t)
-            with torch.no_grad():
-                nq_cue = cue_net(ns_t).max(1)[0].unsqueeze(1)
-                tgt_cue = cue_reward + 0.99 * nq_cue * (1 - float(done))
-            
-            loss_cue = F.smooth_l1_loss(q_cue, tgt_cue)
-            cue_opt.zero_grad()
-            loss_cue.backward()
-            cue_opt.step()
-
-            cue_losses.append((t, loss_cue.item()))
-            if t % 1000 == 0:                                   # <-- add this block
-                    cue_q_log.append((t, float(cue_q_values.mean()),
-                                       float(cue_q_values.max()),
-                                       float(cue_q_values.min())))
-            
-            #state = ns
-            
-            # Compute Q-values
-            #q = cue_net(s).gather(1, a_batch)
-            
-            # Compute target
-            #with torch.no_grad():
-                #nq = cue_target(ns).max(1)[0].unsqueeze(1)
-                #tgt = r_batch + 0.99 * nq * (1 - d)
-            
-            # Update network
-            #loss = F.smooth_l1_loss(q, tgt)  # Huber loss, beta=1.0 by default -> clips TD error to [-1,1]
-            #cue_opt.zero_grad()
-            #loss.backward()
-            #cue_opt.step()
-            
-        # Update target network
-        #if t % 10000 == 0:
-            #cue_target.load_state_dict(cue_net.state_dict())
-        ###########################################################################################################
-  
-        # Update progress bar
-        if t % 50000 == 0:
-            #recent = np.mean(rewards_history[-20:]) if rewards_history else 0
-            bar.set_postfix({"eps": f"{eps(t):.2f}"})#, "reward": f"{recent:.0f}"})
-    
-    bar.close()   
-
-    fig, axes = plt.subplots(3, 1, figsize=(8, 10))
-
-    # 1. cue loss — should trend down or plateau, NOT diverge/explode
-    ts, losses = zip(*cue_losses)
-    axes[0].plot(ts, losses, alpha=0.3)
-    window = 200
-    smoothed = np.convolve(losses, np.ones(window)/window, mode='valid')
-    axes[0].plot(ts[window-1:], smoothed, color='red')
-    axes[0].set_title('cue loss (raw + smoothed)')
-    
-    # 2. cue Q-value stats — should stabilize, not blow up toward +/-inf
-    tq, means, maxs, mins = zip(*cue_q_log)
-    axes[1].plot(tq, means, label='mean')
-    axes[1].plot(tq, maxs, label='max')
-    axes[1].plot(tq, mins, label='min')
-    axes[1].legend()
-    axes[1].set_title('cue_q_values stats over time')
-    
-    # 3. episode reward — should trend up over episodes (or at least not degrade)
-    rewards = [m['total reward'] for m in all_metrics]
-    axes[2].plot(rewards, alpha=0.3)
-    if len(rewards) >= 10:
-        smoothed_r = np.convolve(rewards, np.ones(10)/10, mode='valid')
-        axes[2].plot(range(9, len(rewards)), smoothed_r, color='red')
-    axes[2].set_title('episode reward (raw + smoothed)')
-    
-    plt.tight_layout()
-    plt.show()
-           
-    return net, cue_net, all_metrics
-
-
-# def train_with_seed(seed=42, 
-#                     steps=1_000_000,
-#                     agent = 'Vanilla'):
-#     
-#     if agent == 'Incentive':
-#         train_with_seed_incentive(seed = seed, steps=steps, save_dir = 'results_incentive')
-#         return
-#     
+# def train_with_seed_incentive(seed=42, 
+#                               steps=1_000_000):     
+# 
+#     cue_losses = []
+#     cue_q_log = [] 
 #     set_seed(seed=seed)
 # 
 #     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #     print(f"Using device: {device}")
 #     
 #     # Create environment
-#     env = make_env_with_metrics(seed, agent)
+#     env = make_env_with_metrics(seed, agent = 'Incentive')
 #     
 #     # Create networks
 #     net = DQN(env.action_space.n).to(device)
 #     target = DQN(env.action_space.n).to(device)
 #     target.load_state_dict(net.state_dict())
+# 
+#     # Create networks
+#     cue_net = DQN(env.action_space.n).to(device)
+#     #cue_target = DQN(env.action_space.n).to(device)
+#     #cue_net.load_state_dict(cue_net.state_dict())
 #     
 #     # Optimizer and buffer
+#     #opt = optim.Adam(net.parameters(), lr=6.25e-5, eps=0.01/32)
 #     opt = optim.RMSprop(net.parameters(), lr=0.00025, alpha=0.95, eps=0.01, momentum=0.0)
+#     cue_opt = optim.RMSprop(cue_net.parameters(), lr=0.00025, alpha=0.95, eps=0.01, momentum=0.0)
 #     buf = ReplayBuffer()
+#     #cue_buf = ReplayBuffer()
+#     #eps = lambda t: 0.1 + 0.9 * np.exp(-t / 500000) 
 #     eps = lambda t: max(0.1, 1.0 - 0.9 * (t / 1_000_000))
 #     
-#     state,_ = env.reset(seed=seed)
+#     state, _ = env.reset(seed=seed)
 #     state = np.asarray(state)
 #     info = {}
 #     
@@ -470,17 +252,43 @@ def train_with_seed_incentive(seed=42,
 #             with torch.no_grad():
 #                 q = net(torch.tensor(state, device=device).unsqueeze(0))
 #                 q_values = q.squeeze(0).cpu().numpy()    
-#            
+# 
+#                 cue_q = cue_net(torch.tensor(state, device=device).unsqueeze(0))
+#                 cue_q_values = cue_q.squeeze(0).cpu().numpy()  
+# 
+#                 # softmax normalization over cue_q_values
+#                 cue_q_values[0] = 0
+#                 remaining = cue_q_values[1:]
+#                 exp_vals = np.exp(remaining - np.max(remaining))  # subtract max for numerical stability
+#                 probs = exp_vals / exp_vals.sum()
+#                 cue_q_values[1:] = probs
+# 
+#                 # softmax normalization over q_values
+#                 aux = q_values
+#                 exp_vals = np.exp(aux - np.max(aux))  # subtract max for numerical stability
+#                 probs = exp_vals / exp_vals.sum()
+#                 q_values = probs       
+#                 
+# 
+#             kappa = info.get('kappa', None)
+#             alpha = 0.05
+#             if kappa is not None and kappa > 0 and t > 50000: 
+#                 q_values = q_values * (1 + alpha * kappa * cue_q_values)
+#                
 #             a = int(np.argmax(q_values)) 
 #             
 #         # Environment step
 #         ns, r, term, trunc, info = env.step(a)
-#         ram = env.unwrapped.ale.getRAM()
 #         ns = np.asarray(ns)
 #         done = term or trunc
+#         cue_reward = info['R*']
+# 
+#         prev_state = state
+#         next_state = ns
 #         
 #         # Store experience
 #         buf.push(state, a, r, ns, done)
+#         #cue_buf.push(state, a, cue_reward, ns, done)
 #         state = ns
 #         bar.update(1)
 #         
@@ -493,11 +301,11 @@ def train_with_seed_incentive(seed=42,
 #             if 'metrics' in info:
 #                 metrics = info['metrics']
 #                 metrics['episode'] = episode_count
-#                 metrics['total reward'] = info["episode"].get("r", 0)
-# 
-#                 all_metrics.append(metrics)
+#                 metrics['total reward'] = info["episode"].get("r", 0)                   
 #                 
-#         # Training step
+#                 all_metrics.append(metrics)
+#         
+#         # Training step main dqn
 #         if len(buf) >= 10000 and t % 4 == 0:
 #             s, a_batch, r_batch, ns, d = buf.sample(32)
 #             s = torch.tensor(s, device=device)
@@ -515,23 +323,215 @@ def train_with_seed_incentive(seed=42,
 #                 tgt = r_batch + 0.99 * nq * (1 - d)
 #             
 #             # Update network
-#             #loss = F.mse_loss(q, tgt)
 #             loss = F.smooth_l1_loss(q, tgt)  # Huber loss, beta=1.0 by default -> clips TD error to [-1,1]
 #             opt.zero_grad()
 #             loss.backward()
 #             opt.step()
-#         
+# 
+#             
 #         # Update target network
 #         if t % 10000 == 0:
 #             target.load_state_dict(net.state_dict())
-#         
+#         ############################Training cue dqn #################################################################
+# 
+#         if t % 4 == 0:
+#             #s, a_batch, r_batch, ns, d = cue_buf.sample(32)
+#             #s = torch.tensor(s, device=device)
+#             #ns = torch.tensor(ns, device=device)
+#             #a_batch = torch.tensor(a_batch, device=device).unsqueeze(1)
+#             #r_batch = torch.tensor(r_batch, device=device).unsqueeze(1)
+#             #d = torch.tensor(d, device=device).unsqueeze(1)
+# 
+#             s_t = torch.tensor(prev_state, device=device).unsqueeze(0)
+#             a_t = torch.tensor([[a]], device=device)
+#             ns_t = torch.tensor(next_state, device=device).unsqueeze(0)
+#             
+#             q_cue = cue_net(s_t).gather(1, a_t)
+#             with torch.no_grad():
+#                 nq_cue = cue_net(ns_t).max(1)[0].unsqueeze(1)
+#                 tgt_cue = cue_reward + 0.99 * nq_cue * (1 - float(done))
+#             
+#             loss_cue = F.smooth_l1_loss(q_cue, tgt_cue)
+#             cue_opt.zero_grad()
+#             loss_cue.backward()
+#             cue_opt.step()
+# 
+#             cue_losses.append((t, loss_cue.item()))
+#             if t % 1000 == 0:                                   # <-- add this block
+#                     cue_q_log.append((t, float(cue_q_values.mean()),
+#                                        float(cue_q_values.max()),
+#                                        float(cue_q_values.min())))
+#             
+#             #state = ns
+#             
+#             # Compute Q-values
+#             #q = cue_net(s).gather(1, a_batch)
+#             
+#             # Compute target
+#             #with torch.no_grad():
+#                 #nq = cue_target(ns).max(1)[0].unsqueeze(1)
+#                 #tgt = r_batch + 0.99 * nq * (1 - d)
+#             
+#             # Update network
+#             #loss = F.smooth_l1_loss(q, tgt)  # Huber loss, beta=1.0 by default -> clips TD error to [-1,1]
+#             #cue_opt.zero_grad()
+#             #loss.backward()
+#             #cue_opt.step()
+#             
+#         # Update target network
+#         #if t % 10000 == 0:
+#             #cue_target.load_state_dict(cue_net.state_dict())
+#         ###########################################################################################################
+#   
 #         # Update progress bar
 #         if t % 50000 == 0:
-#             bar.set_postfix({"eps": f"{eps(t):.2f}"})
+#             #recent = np.mean(rewards_history[-20:]) if rewards_history else 0
+#             bar.set_postfix({"eps": f"{eps(t):.2f}"})#, "reward": f"{recent:.0f}"})
 #     
-#     bar.close()    
+#     bar.close()   
+# 
+#     fig, axes = plt.subplots(3, 1, figsize=(8, 10))
+# 
+#     # 1. cue loss — should trend down or plateau, NOT diverge/explode
+#     ts, losses = zip(*cue_losses)
+#     axes[0].plot(ts, losses, alpha=0.3)
+#     window = 200
+#     smoothed = np.convolve(losses, np.ones(window)/window, mode='valid')
+#     axes[0].plot(ts[window-1:], smoothed, color='red')
+#     axes[0].set_title('cue loss (raw + smoothed)')
 #     
-#     return net, all_metrics
+#     # 2. cue Q-value stats — should stabilize, not blow up toward +/-inf
+#     tq, means, maxs, mins = zip(*cue_q_log)
+#     axes[1].plot(tq, means, label='mean')
+#     axes[1].plot(tq, maxs, label='max')
+#     axes[1].plot(tq, mins, label='min')
+#     axes[1].legend()
+#     axes[1].set_title('cue_q_values stats over time')
+#     
+#     # 3. episode reward — should trend up over episodes (or at least not degrade)
+#     rewards = [m['total reward'] for m in all_metrics]
+#     axes[2].plot(rewards, alpha=0.3)
+#     if len(rewards) >= 10:
+#         smoothed_r = np.convolve(rewards, np.ones(10)/10, mode='valid')
+#         axes[2].plot(range(9, len(rewards)), smoothed_r, color='red')
+#     axes[2].set_title('episode reward (raw + smoothed)')
+#     
+#     plt.tight_layout()
+#     plt.show()
+#            
+#     return net, cue_net, all_metrics
+
+# In[ ]:
+
+
+def train_with_seed(seed=42, 
+                    steps=1_000_000,
+                    agent = 'Vanilla'):
+    
+    if agent == 'Incentive':
+        train_with_seed_incentive(seed = seed, steps=steps, save_dir = 'results_incentive')
+        return
+    
+    set_seed(seed=seed)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    
+    # Create environment
+    env = make_env_with_metrics(seed, agent)
+    
+    # Create networks
+    net = DQN(env.action_space.n).to(device)
+    target = DQN(env.action_space.n).to(device)
+    target.load_state_dict(net.state_dict())
+    
+    # Optimizer and buffer
+    opt = optim.RMSprop(net.parameters(), lr=0.00025, alpha=0.95, eps=0.01, momentum=0.0)
+    buf = ReplayBuffer()
+    eps = lambda t: max(0.1, 1.0 - 0.9 * (t / 1_000_000))
+    
+    state,_ = env.reset(seed=seed)
+    state = np.asarray(state)
+    info = {}
+    
+    episode_count = 0
+    
+    bar = tqdm(total=steps, desc=f"Seed {seed}")
+
+    all_metrics = []
+    
+    for t in range(1, steps + 1):
+        # Epsilon-greedy action selection
+        if random.random() < eps(t):
+            a = env.action_space.sample()
+
+        else:
+            with torch.no_grad():
+                q = net(torch.tensor(state, device=device).unsqueeze(0))
+                q_values = q.squeeze(0).cpu().numpy()    
+           
+            a = int(np.argmax(q_values)) 
+            
+        # Environment step
+        ns, r, term, trunc, info = env.step(a)
+        ram = env.unwrapped.ale.getRAM()
+        ns = np.asarray(ns)
+        done = term or trunc
+        
+        # Store experience
+        buf.push(state, a, r, ns, done)
+        state = ns
+        bar.update(1)
+        
+        # Episode ended
+        if done:
+            episode_count += 1
+            state, _ = env.reset(seed=seed)
+            state = np.asarray(state)
+
+            if 'metrics' in info:
+                metrics = info['metrics']
+                metrics['episode'] = episode_count
+                metrics['total reward'] = info["episode"].get("r", 0)
+
+                all_metrics.append(metrics)
+                
+        # Training step
+        if len(buf) >= 10000 and t % 4 == 0:
+            s, a_batch, r_batch, ns, d = buf.sample(32)
+            s = torch.tensor(s, device=device)
+            ns = torch.tensor(ns, device=device)
+            a_batch = torch.tensor(a_batch, device=device).unsqueeze(1)
+            r_batch = torch.tensor(r_batch, device=device).unsqueeze(1)
+            d = torch.tensor(d, device=device).unsqueeze(1)
+            
+            # Compute Q-values
+            q = net(s).gather(1, a_batch)
+            
+            # Compute target
+            with torch.no_grad():
+                nq = target(ns).max(1)[0].unsqueeze(1)
+                tgt = r_batch + 0.99 * nq * (1 - d)
+            
+            # Update network
+            #loss = F.mse_loss(q, tgt)
+            loss = F.smooth_l1_loss(q, tgt)  # Huber loss, beta=1.0 by default -> clips TD error to [-1,1]
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+        
+        # Update target network
+        if t % 10000 == 0:
+            target.load_state_dict(net.state_dict())
+        
+        # Update progress bar
+        if t % 50000 == 0:
+            bar.set_postfix({"eps": f"{eps(t):.2f}"})
+    
+    bar.close()    
+    
+    return net, all_metrics
+
 
 # In[3]:
 
