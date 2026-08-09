@@ -27,14 +27,15 @@ class RestrictActionsWrapper(gym.Wrapper):
 
 class LifeLossWrapper(gym.Wrapper):
 
-    def __init__(self, env, raw_tracker=None):
+    def __init__(self, env, raw_tracker=None, loss = 100):
         super().__init__(env)
+        self.loss = loss
    
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
         ram = self.env.unwrapped.ale.getRAM()
         self._lives = ram[123]
-        self.loss = 100
+        
         return obs, info
 
     def step(self, action):

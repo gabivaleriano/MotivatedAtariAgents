@@ -20,14 +20,15 @@ from utils import set_seed
 
 def train_with_seed_incentive(seed=42, 
                               steps=1_000_000,
-                              alpha = 0.05):      
+                              alpha = 0.05,
+                              loss = 100):      
     set_seed(seed=seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
     # Create environment
-    env = make_env_with_metrics(seed, agent = 'Incentive')
+    env = make_env_with_metrics(seed, agent = 'Incentive', loss = loss)
     
     # Create networks
     net = DQN(env.action_space.n).to(device)
@@ -189,10 +190,11 @@ def train_with_seed_incentive(seed=42,
 def train_with_seed(seed=42, 
                     steps=1_000_000,
                     alpha = 0.05,
+                    loss = 100,
                     agent = 'Vanilla'):
     
     if agent == 'Incentive':
-        train_with_seed_incentive(seed = seed, steps=steps, alpha = alpha, save_dir = 'results_incentive')
+        train_with_seed_incentive(seed = seed, steps=steps, alpha = alpha, loss = loss, save_dir = 'results_incentive')
         return
     
     set_seed(seed=seed)
@@ -201,7 +203,7 @@ def train_with_seed(seed=42,
     print(f"Using device: {device}")
     
     # Create environment
-    env = make_env_with_metrics(seed, agent)
+    env = make_env_with_metrics(seed, loss= loss, agent = agent)
     
     # Create networks
     net = DQN(env.action_space.n).to(device)
@@ -304,6 +306,7 @@ def complete_training(num_seeds=5,
                    agents=['Vanilla', 'Incentive'],
                    eval_episodes = 100,
                    alpha = 0.05,
+                   loss = 100,
                    save_dir='results'):
 
     os.makedirs(save_dir, exist_ok=True)
@@ -329,6 +332,7 @@ def complete_training(num_seeds=5,
                 net, metrics = train_with_seed(
                     seed=seed,
                     steps=steps,
+                    loss = loss,
                     agent=agent )
                      
                 agent_results['training'].append({
@@ -340,6 +344,7 @@ def complete_training(num_seeds=5,
                     net=net,
                     num_episodes=eval_episodes,
                     base_seed=seed * 1000,
+                    loss = loss,
                     agent = agent
                 )
                 
@@ -355,6 +360,7 @@ def complete_training(num_seeds=5,
                 net, cue_net, metrics = train_with_seed_incentive(
                 seed=seed,
                 steps=steps,
+                loss = loss,
                 alpha = alpha,
                 )   
                 
@@ -369,6 +375,7 @@ def complete_training(num_seeds=5,
                     num_episodes=eval_episodes,
                     base_seed=seed * 1000,
                     alpha = alpha,
+                    loss = loss,
                     agent = agent
                 )
                 
@@ -392,6 +399,7 @@ def evaluate_agent(net,
                    base_seed=42, 
                    deterministic=True,
                    alpha = 0.05,
+                   loss = 100,
                    agent = 'Vanilla'):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -402,7 +410,7 @@ def evaluate_agent(net,
     print(f"{'='*60}\n")
 
     
-    env = make_env_with_metrics(base_seed, agent)
+    env = make_env_with_metrics(base_seed, loss = loss, agent = agent)
     net.eval()
     
     eval_metrics = []
@@ -455,6 +463,7 @@ def evaluate_agent_incentive(net, cue_net,
                    base_seed=42, 
                    deterministic=True,
                    alpha = 0.05,
+                   loss = 100,
                    agent = 'Incentive'):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -465,7 +474,7 @@ def evaluate_agent_incentive(net, cue_net,
     print(f"{'='*60}\n")
 
     
-    env = make_env_with_metrics(base_seed, agent)
+    env = make_env_with_metrics(base_seed, loss = loss, agent = agent)
     net.eval()
     cue_net.eval()
     

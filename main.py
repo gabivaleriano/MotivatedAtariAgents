@@ -27,6 +27,8 @@ def main():
                        help='Number episodes for evaluation')
     parser.add_argument('--alpha', type=float, default=0.05,
                        help='Modulation intensity')
+    parser.add_argument('--loss', type=int, default=100,
+                       help='Life loss penalty')
 
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
@@ -50,6 +52,7 @@ def main():
     alpha = args.alpha,
     save_dir=args.save_dir,
     agents=args.agents,
+    loss=args.loss,
     eval_episodes=args.eval_episodes)
        
     print("\n" + "="*60)
