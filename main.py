@@ -4,7 +4,7 @@
 # In[1]:
 
 
-from training_ import complete_training
+from training import complete_training
 from utils import set_seed
 
 import argparse
@@ -25,7 +25,9 @@ def main():
                        help='List with agents to be trained. Options: Vanilla, Incentive')
     parser.add_argument('--eval_episodes', type=int, default=100,
                        help='Number episodes for evaluation')
-    
+    parser.add_argument('--alpha', type=float, default=0.05,
+                       help='Modulation intensity')
+
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
                        help='Directory to save results')
@@ -45,6 +47,7 @@ def main():
     complete_training(
     num_seeds=args.num_seeds,
     steps=args.steps,
+    alpha = args.alpha,
     save_dir=args.save_dir,
     agents=args.agents,
     eval_episodes=args.eval_episodes)

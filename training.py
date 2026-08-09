@@ -19,7 +19,8 @@ from env import make_env_with_metrics
 from utils import set_seed
 
 def train_with_seed_incentive(seed=42, 
-                              steps=1_000_000):      
+                              steps=1_000_000,
+                              alpha = 0.05):      
     set_seed(seed=seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -85,7 +86,7 @@ def train_with_seed_incentive(seed=42,
                 
 
             kappa = info.get('kappa', None)
-            alpha = 0.05
+            alpha = alpha
             if kappa is not None and kappa > 0 and t > 50000: 
                 q_values = q_values * (1 + alpha * kappa * cue_q_values)
                
@@ -187,10 +188,11 @@ def train_with_seed_incentive(seed=42,
 
 def train_with_seed(seed=42, 
                     steps=1_000_000,
+                    alpha = 0.05,
                     agent = 'Vanilla'):
     
     if agent == 'Incentive':
-        train_with_seed_incentive(seed = seed, steps=steps, save_dir = 'results_incentive')
+        train_with_seed_incentive(seed = seed, steps=steps, alpha = alpha, save_dir = 'results_incentive')
         return
     
     set_seed(seed=seed)
@@ -301,6 +303,7 @@ def complete_training(num_seeds=5,
                    steps=1_000_000,
                    agents=['Vanilla', 'Incentive'],
                    eval_episodes = 100,
+                   alpha = 0.05,
                    save_dir='results'):
 
     os.makedirs(save_dir, exist_ok=True)
@@ -352,6 +355,7 @@ def complete_training(num_seeds=5,
                 net, cue_net, metrics = train_with_seed_incentive(
                 seed=seed,
                 steps=steps,
+                alpha = alpha,
                 )   
                 
                 agent_results['training'].append({
@@ -364,6 +368,7 @@ def complete_training(num_seeds=5,
                     cue_net = cue_net,
                     num_episodes=eval_episodes,
                     base_seed=seed * 1000,
+                    alpha = alpha,
                     agent = agent
                 )
                 
@@ -386,6 +391,7 @@ def evaluate_agent(net,
                    num_episodes=100, 
                    base_seed=42, 
                    deterministic=True,
+                   alpha = 0.05,
                    agent = 'Vanilla'):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -448,6 +454,7 @@ def evaluate_agent_incentive(net, cue_net,
                    num_episodes=100, 
                    base_seed=42, 
                    deterministic=True,
+                   alpha = 0.05,
                    agent = 'Incentive'):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -497,7 +504,7 @@ def evaluate_agent_incentive(net, cue_net,
                 q_values = probs
 
                 kappa = info.get('kappa', None)
-                alpha = 0.05
+                alpha = alpha
                 if kappa is not None and kappa > 0: 
                     q_values = q_values * (1 + alpha * kappa * cue_q_values)
 
