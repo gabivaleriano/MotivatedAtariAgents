@@ -127,7 +127,7 @@ class WantLikeWrapper(gym.Wrapper):
 class IncentiveWrapper(gym.Wrapper):
 # sem tolerância
     
-    def __init__(self, env, raw_tracker=None):
+    def __init__(self, env, raw_tracker=None, like = 1):
         super().__init__(env)
         self.raw_tracker = raw_tracker
         self.D = 30          # start at homeostasis
@@ -138,6 +138,7 @@ class IncentiveWrapper(gym.Wrapper):
         self.kappa = 1
         self.past_119 = 0
         self.past_lives = 0
+        self.like = 1
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
@@ -152,7 +153,7 @@ class IncentiveWrapper(gym.Wrapper):
         # 1. detect eating first (takes priority)
         if current_119 != self.past_119:
             energy_delta += 1
-            Ril = 1
+            Ril = self.like
 
         self.past_119 = current_119
 

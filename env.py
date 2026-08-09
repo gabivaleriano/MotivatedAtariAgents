@@ -15,7 +15,7 @@ from gymnasium.wrappers import TransformReward
 # Register Atari (ALE) environments with gymnasium
 gym.register_envs(ale_py)
 
-def make_env_with_metrics(seed, agent = 'Vanilla', loss = 100):
+def make_env_with_metrics(seed, agent = 'Vanilla', loss = 100, like = 1):
         
     env = gym.make("ALE/MsPacman-v5", obs_type="rgb", frameskip=4)  # Create the Ms. Pac-Man game environment     
     env = LifeLossWrapper(env, loss = loss)
@@ -30,7 +30,7 @@ def make_env_with_metrics(seed, agent = 'Vanilla', loss = 100):
         env = CombineRewardWrapper(env,'WantLike')    
 
     if agent == 'Incentive':
-        env = IncentiveWrapper(env)
+        env = IncentiveWrapper(env, like = like)
         env = CombineRewardWrapper(env,'Incentive')    
         
     env = gym.wrappers.RecordEpisodeStatistics(env) # Wrapper that records episode statistics  

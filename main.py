@@ -29,6 +29,10 @@ def main():
                        help='Modulation intensity')
     parser.add_argument('--loss', type=int, default=100,
                        help='Life loss penalty')
+    parser.add_argument('--kappa_', type=int, default=0,
+                       help='Kappa modulation, can receive 1')
+    parser.add_argument('--like', type=int, default=1,
+                       help='Like reward on Incentive agent')
 
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
@@ -53,6 +57,8 @@ def main():
     save_dir=args.save_dir,
     agents=args.agents,
     loss=args.loss,
+    kappa_=args.kappa_,
+    like=args.like,
     eval_episodes=args.eval_episodes)
        
     print("\n" + "="*60)

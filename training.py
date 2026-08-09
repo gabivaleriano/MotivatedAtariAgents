@@ -21,14 +21,16 @@ from utils import set_seed
 def train_with_seed_incentive(seed=42, 
                               steps=1_000_000,
                               alpha = 0.05,
-                              loss = 100):      
+                              kappa_= 0,
+                              loss = 100,
+                              like = 1):      
     set_seed(seed=seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
     # Create environment
-    env = make_env_with_metrics(seed, agent = 'Incentive', loss = loss)
+    env = make_env_with_metrics(seed, agent = 'Incentive', loss = loss, like = like)
     
     # Create networks
     net = DQN(env.action_space.n).to(device)
@@ -88,8 +90,11 @@ def train_with_seed_incentive(seed=42,
 
             kappa = info.get('kappa', None)
             alpha = alpha
-            if kappa is not None and kappa > 0 and t > 50000: 
-                q_values = q_values * (1 + alpha * kappa * cue_q_values)
+            if kappa_ == 1 and t > 50000 :
+                    q_values = q_values * (1 + alpha * kappa_ * cue_q_values)
+            else:                      
+                if kappa is not None and kappa > 0 and t > 50000: 
+                    q_values = q_values * (1 + alpha * kappa * cue_q_values)
                
             a = int(np.argmax(q_values)) 
             
@@ -191,10 +196,12 @@ def train_with_seed(seed=42,
                     steps=1_000_000,
                     alpha = 0.05,
                     loss = 100,
+                    kappa_ = 0,
+                    like = 1,
                     agent = 'Vanilla'):
     
     if agent == 'Incentive':
-        train_with_seed_incentive(seed = seed, steps=steps, alpha = alpha, loss = loss, save_dir = 'results_incentive')
+        train_with_seed_incentive(seed = seed, steps=steps, alpha = alpha, loss = loss, kappa_ = kappa_, like = like)
         return
     
     set_seed(seed=seed)
@@ -205,7 +212,7 @@ def train_with_seed(seed=42,
     # Create environment
     env = make_env_with_metrics(seed, loss= loss, agent = agent)
     
-    # Create networks
+    # Create networ
     net = DQN(env.action_space.n).to(device)
     target = DQN(env.action_space.n).to(device)
     target.load_state_dict(net.state_dict())
@@ -307,6 +314,8 @@ def complete_training(num_seeds=5,
                    eval_episodes = 100,
                    alpha = 0.05,
                    loss = 100,
+                   kappa_ = 0,
+                   like = 1,
                    save_dir='results'):
 
     os.makedirs(save_dir, exist_ok=True)
@@ -362,6 +371,8 @@ def complete_training(num_seeds=5,
                 steps=steps,
                 loss = loss,
                 alpha = alpha,
+                kappa_= kappa_,
+                like = like,
                 )   
                 
                 agent_results['training'].append({
@@ -376,6 +387,8 @@ def complete_training(num_seeds=5,
                     base_seed=seed * 1000,
                     alpha = alpha,
                     loss = loss,
+                    kappa_ = kappa_,
+                    like = like,
                     agent = agent
                 )
                 
@@ -464,6 +477,8 @@ def evaluate_agent_incentive(net, cue_net,
                    deterministic=True,
                    alpha = 0.05,
                    loss = 100,
+                   kappa_ = 0,
+                   like=1,
                    agent = 'Incentive'):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -474,7 +489,7 @@ def evaluate_agent_incentive(net, cue_net,
     print(f"{'='*60}\n")
 
     
-    env = make_env_with_metrics(base_seed, loss = loss, agent = agent)
+    env = make_env_with_metrics(base_seed, loss = loss, agent = agent, like = like)
     net.eval()
     cue_net.eval()
     
@@ -514,8 +529,11 @@ def evaluate_agent_incentive(net, cue_net,
 
                 kappa = info.get('kappa', None)
                 alpha = alpha
-                if kappa is not None and kappa > 0: 
-                    q_values = q_values * (1 + alpha * kappa * cue_q_values)
+                if kappa_ == 1:
+                    q_values = q_values * (1 + alpha * kappa_ * cue_q_values)
+                else:
+                    if kappa is not None and kappa > 0: 
+                        q_values = q_values * (1 + alpha * kappa * cue_q_values)
 
                 if deterministic:
                     a = int(np.argmax(q_values))
