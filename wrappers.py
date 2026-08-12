@@ -174,6 +174,9 @@ class MetricsWrapper(gym.Wrapper):
             self.drive_reward += info.get('drive_reward',0.0)
             self.extrinsic_reward += info['extrinsic_reward']
             self.like_reward += info.get('like_reward',0.0)  
+
+        if self.agent == 'Incentive':
+            info['positions'] = self.episode_positions
         
         # Calculate metrics at episode end
         if terminated or truncated:            

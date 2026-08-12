@@ -18,7 +18,7 @@ def main():
     # Experiment settings
     parser.add_argument('--num_seeds', type=int, default=5,
                        help='Number of seeds for training')
-    parser.add_argument('--steps', type=int, default=2_000_000,
+    parser.add_argument('--steps', type=int, default=3_500_000,
                        help='Total training steps per seed')
     parser.add_argument('--agents', type=str, nargs ='+',  default= ['Incentive'],
                        choices = ['Vanilla', 'Incentive','Hull','WantLike'],
@@ -30,9 +30,11 @@ def main():
     parser.add_argument('--loss', type=int, default=100,
                        help='Life loss penalty')
     parser.add_argument('--kappa_', type=int, default=0,
-                       help='Kappa modulation, can receive 1')
+                       help='Kappa modulation, can receive 1 to set off')
     parser.add_argument('--like', type=int, default=1,
                        help='Like reward on Incentive agent')
+    parser.add_argument('--dqn_modulation', type=int, default=1,
+                       help='DQN modulation, can receive 0 to hand-coded modulation')
 
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
@@ -59,6 +61,7 @@ def main():
     loss=args.loss,
     kappa_=args.kappa_,
     like=args.like,
+    dqn_modulation=args.dqn_modulation,
     eval_episodes=args.eval_episodes)
        
     print("\n" + "="*60)

@@ -23,14 +23,20 @@ def train_with_seed_incentive(seed=42,
                               alpha = 0.05,
                               kappa_= 0,
                               loss = 100,
-                              like = 1):      
+                              like = 1,
+                              dqn_modulation = 1,
+                              agent = 'Incentive'): 
+
+    if dqn_modulation == 0 or agent != 'Incentive':
+        return
+        
     set_seed(seed=seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
     # Create environment
-    env = make_env_with_metrics(seed, agent = 'Incentive', loss = loss, like = like)
+    env = make_env_with_metrics(seed, agent='Incentive', loss=loss, like=like)
     
     # Create networks
     net = DQN(env.action_space.n).to(device)
@@ -194,14 +200,11 @@ def train_with_seed_incentive(seed=42,
 
 def train_with_seed(seed=42, 
                     steps=1_000_000,
-                    alpha = 0.05,
-                    loss = 100,
-                    kappa_ = 0,
-                    like = 1,
+                    dqn_modulation=1,
+                    loss=100,
                     agent = 'Vanilla'):
     
-    if agent == 'Incentive':
-        train_with_seed_incentive(seed = seed, steps=steps, alpha = alpha, loss = loss, kappa_ = kappa_, like = like)
+    if agent == 'Incentive' and dqn_modulation == 1:
         return
     
     set_seed(seed=seed)
@@ -210,7 +213,7 @@ def train_with_seed(seed=42,
     print(f"Using device: {device}")
     
     # Create environment
-    env = make_env_with_metrics(seed, loss= loss, agent = agent)
+    env = make_env_with_metrics(seed, loss=loss, agent=agent)
     
     # Create networ
     net = DQN(env.action_space.n).to(device)
@@ -241,7 +244,13 @@ def train_with_seed(seed=42,
             with torch.no_grad():
                 q = net(torch.tensor(state, device=device).unsqueeze(0))
                 q_values = q.squeeze(0).cpu().numpy()    
-           
+                
+            if agent == 'Incentive':
+                kappa = info.get('kappa', None)                
+                alpha = 0.05
+                if kappa is not None and kappa > 0 and t > 50000:
+                    C = info.get('C')
+                    q_values = q_values * (1 + alpha * kappa * C)
             a = int(np.argmax(q_values)) 
             
         # Environment step
@@ -312,10 +321,11 @@ def complete_training(num_seeds=5,
                    steps=1_000_000,
                    agents=['Vanilla', 'Incentive'],
                    eval_episodes = 100,
-                   alpha = 0.05,
-                   loss = 100,
-                   kappa_ = 0,
-                   like = 1,
+                   alpha=0.05,
+                   loss=100,
+                   kappa_=0,
+                   like=1,
+                   dqn_modulation=1,
                    save_dir='results'):
 
     os.makedirs(save_dir, exist_ok=True)
@@ -336,12 +346,13 @@ def complete_training(num_seeds=5,
         # Train with multiple seeds
         seeds = [1, 42, 123, 456, 789][:num_seeds]
 
-        if agent == 'Vanilla' or agent == 'Hull' or agent == 'WantLike': 
+        if agent == 'Vanilla' or agent == 'Hull' or agent == 'WantLike' or (agent == 'Incentive' and dqn_modulation == 0): 
             for seed in seeds: 
                 net, metrics = train_with_seed(
                     seed=seed,
                     steps=steps,
-                    loss = loss,
+                    loss=loss,
+                    dqn_modulation = dqn_modulation,
                     agent=agent )
                      
                 agent_results['training'].append({
@@ -353,7 +364,8 @@ def complete_training(num_seeds=5,
                     net=net,
                     num_episodes=eval_episodes,
                     base_seed=seed * 1000,
-                    loss = loss,
+                    loss=loss,
+                    dqn_modulation = dqn_modulation,
                     agent = agent
                 )
                 
@@ -364,15 +376,17 @@ def complete_training(num_seeds=5,
                         
             all_results[agent] = agent_results
 
-        if agent == 'Incentive':
+        if agent == 'Incentive' and dqn_modulation == 1:
             for seed in seeds:    
                 net, cue_net, metrics = train_with_seed_incentive(
                 seed=seed,
                 steps=steps,
-                loss = loss,
-                alpha = alpha,
-                kappa_= kappa_,
-                like = like,
+                loss=loss,
+                alpha=alpha,
+                kappa_=kappa_,
+                like=like,
+                dqn_modulation = dqn_modulation,
+                agent = agent
                 )   
                 
                 agent_results['training'].append({
@@ -382,14 +396,15 @@ def complete_training(num_seeds=5,
                 # Evaluate
                 eval_metrics = evaluate_agent_incentive(
                     net=net,
-                    cue_net = cue_net,
+                    cue_net=cue_net,
                     num_episodes=eval_episodes,
                     base_seed=seed * 1000,
-                    alpha = alpha,
-                    loss = loss,
-                    kappa_ = kappa_,
-                    like = like,
-                    agent = agent
+                    alpha=alpha,
+                    loss=loss,
+                    kappa_=kappa_,
+                    like=like,
+                    dqn_modulation=dqn_modulation,
+                    agent=agent
                 )
                 
                 agent_results['evaluation'].append({
@@ -411,19 +426,21 @@ def evaluate_agent(net,
                    num_episodes=100, 
                    base_seed=42, 
                    deterministic=True,
-                   alpha = 0.05,
-                   loss = 100,
+                   dqn_modulation=1,
+                   loss=100,
                    agent = 'Vanilla'):
-    
+
+    if agent == 'Incentive' and dqn_modulation == 1:
+        return
+        
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     print(f"\n{'='*60}")
     print(f"Evaluating {agent} agent for {num_episodes} episodes")
     print(f"{'='*60}\n")
-
     
-    env = make_env_with_metrics(base_seed, loss = loss, agent = agent)
+    env = make_env_with_metrics(base_seed, loss=loss, agent=agent)
     net.eval()
     
     eval_metrics = []
@@ -443,6 +460,12 @@ def evaluate_agent(net,
             with torch.no_grad():
                 q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
                 q_values = q.squeeze(0).cpu().numpy()
+                if agent == 'Incentive':
+                    kappa = info.get('kappa', None)                
+                    alpha = 0.05
+                    if kappa is not None and kappa > 0:
+                        C = info.get('C')
+                        q_values = q_values * (1 + alpha * kappa * C)   
 
                 if deterministic:
                     a = int(np.argmax(q_values))
@@ -479,7 +502,11 @@ def evaluate_agent_incentive(net, cue_net,
                    loss = 100,
                    kappa_ = 0,
                    like=1,
+                   dqn_modulation = 1,
                    agent = 'Incentive'):
+
+    if dqn_modulation == 0 or agent != 'Incentive':
+        return 
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -489,7 +516,7 @@ def evaluate_agent_incentive(net, cue_net,
     print(f"{'='*60}\n")
 
     
-    env = make_env_with_metrics(base_seed, loss = loss, agent = agent, like = like)
+    env = make_env_with_metrics(base_seed, loss=loss, agent=agent, like=like)
     net.eval()
     cue_net.eval()
     

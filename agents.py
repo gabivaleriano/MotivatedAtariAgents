@@ -6,6 +6,8 @@
 
 import gymnasium as gym
 import numpy as np
+import pickle 
+from utils import compute_directional_pellet_salience
 
 class HullWrapper(gym.Wrapper):
     
@@ -140,10 +142,15 @@ class IncentiveWrapper(gym.Wrapper):
         self.past_lives = 0
         self.like = 1
 
+        with open("traversable_positions.pkl", "rb") as f_trav:
+            self.traversable_positions = pickle.load(f_trav)
+
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
         ram = self.env.unwrapped.ale.getRAM()
         current_119 = int(ram[119])
+        x = int(ram[10])
+        y = int(ram[16])
 
         # 1. detect eating first (takes priority)
         energy_delta = -0.1
@@ -167,6 +174,11 @@ class IncentiveWrapper(gym.Wrapper):
             self.kappa = 1  # well-fed, no salience amplificatiom            
 
         Ri = Ril
+
+        eaten = info.get('eaten_pellet_positions', set())        
+        C = compute_directional_pellet_salience(x, y, self.traversable_positions, eaten)
+
+        info['C'] = C
 
         # Combine rewards
         info["like_reward"] = Ril
