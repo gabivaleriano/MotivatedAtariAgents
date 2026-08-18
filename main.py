@@ -33,7 +33,7 @@ def main():
                        help='Kappa modulation, can receive 1 to set off')
     parser.add_argument('--like', type=int, default=1,
                        help='Like reward on Incentive agent')
-    parser.add_argument('--dqn_modulation', type=int, default=1,
+    parser.add_argument('--dqn_modulation', type=int, default=0,
                        help='DQN modulation, can receive 0 to hand-coded modulation')
 
     # Output settings

@@ -246,11 +246,19 @@ def train_with_seed(seed=42,
                 q_values = q.squeeze(0).cpu().numpy()    
                 
             if agent == 'Incentive':
+                
+                # softmax normalization over q_values
+                aux = q_values
+                exp_vals = np.exp(aux - np.max(aux))  # subtract max for numerical stability
+                probs = exp_vals / exp_vals.sum()
+                q_values = probs  
+                
                 kappa = info.get('kappa', None)                
                 alpha = 0.05
                 if kappa is not None and kappa > 0 and t > 50000:
                     C = info.get('C')
                     q_values = q_values * (1 + alpha * kappa * C)
+                    
             a = int(np.argmax(q_values)) 
             
         # Environment step
@@ -460,7 +468,15 @@ def evaluate_agent(net,
             with torch.no_grad():
                 q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
                 q_values = q.squeeze(0).cpu().numpy()
+                
                 if agent == 'Incentive':
+                    
+                    # softmax normalization over q_values
+                    aux = q_values
+                    exp_vals = np.exp(aux - np.max(aux))  # subtract max for numerical stability
+                    probs = exp_vals / exp_vals.sum()
+                    q_values = probs  
+                    
                     kappa = info.get('kappa', None)                
                     alpha = 0.05
                     if kappa is not None and kappa > 0:
