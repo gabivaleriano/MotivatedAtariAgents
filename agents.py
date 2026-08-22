@@ -140,7 +140,7 @@ class IncentiveWrapper(gym.Wrapper):
         self.kappa = 1
         self.past_119 = 0
         self.past_lives = 0
-        self.like = 1
+        self.like = like
 
         with open("traversable_positions.pkl", "rb") as f_trav:
             self.traversable_positions = pickle.load(f_trav)
