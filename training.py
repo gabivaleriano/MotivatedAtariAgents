@@ -98,6 +98,8 @@ def train_with_seed_incentive(seed=42,
             alpha = alpha
             if kappa_ == 1 and t > 50000 :
                     q_values = q_values * (1 + alpha * kappa_ * cue_q_values)
+            elif kappa_ == 2 and t > 50000 :
+                    q_values = q_values * (1 + alpha * kappa_ * np.array([0, 0.25, 0.25, 0.25, 0.25]))                
             else:                      
                 if kappa is not None and kappa > 0 and t > 50000: 
                     q_values = q_values * (1 + alpha * kappa * cue_q_values)
@@ -574,6 +576,8 @@ def evaluate_agent_incentive(net, cue_net,
                 alpha = alpha
                 if kappa_ == 1:
                     q_values = q_values * (1 + alpha * kappa_ * cue_q_values)
+                elif kappa_ == 2 and t > 50000 :
+                    q_values = q_values * (1 + alpha * kappa_ * np.array([0, 0.25, 0.25, 0.25, 0.25]))     
                 else:
                     if kappa is not None and kappa > 0: 
                         q_values = q_values * (1 + alpha * kappa * cue_q_values)
