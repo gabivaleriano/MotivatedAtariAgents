@@ -354,7 +354,7 @@ def complete_training(num_seeds=5,
         }
         
         # Train with multiple seeds
-        seeds = [1, 42][:num_seeds]
+        seeds = [123, 456][:num_seeds]
 
         if agent == 'Vanilla' or agent == 'Hull' or agent == 'WantLike' or (agent == 'Incentive' and dqn_modulation == 0): 
             for seed in seeds: 
