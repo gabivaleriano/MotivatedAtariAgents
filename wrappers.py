@@ -222,9 +222,9 @@ class CombineRewardWrapper(gym.Wrapper):
         intrinsic_reward = 0        
         intrinsic_reward += info.get('drive_reward',0.0) 
         intrinsic_reward += info.get('like_reward',0.0) 
-        
+                
         total = reward + intrinsic_reward
-        
+
         info["game_reward"] = reward if reward > 0 else 0        
         info["extrinsic_reward"] = reward
         info["combined_reward"] = total

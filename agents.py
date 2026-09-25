@@ -145,6 +145,8 @@ class IncentiveWrapper(gym.Wrapper):
         with open("traversable_positions.pkl", "rb") as f_trav:
             self.traversable_positions = pickle.load(f_trav)
 
+        
+
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
         ram = self.env.unwrapped.ale.getRAM()
@@ -172,8 +174,6 @@ class IncentiveWrapper(gym.Wrapper):
             self.kappa = 1 + (self.D_star - self.D) / self.D_star  # in [0, 1]
         else:
             self.kappa = 1  # well-fed, no salience amplificatiom            
-
-        Ri = Ril
 
         eaten = info.get('eaten_pellet_positions', set())        
         C = compute_directional_pellet_salience(x, y, self.traversable_positions, eaten)

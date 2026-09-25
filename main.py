@@ -33,8 +33,8 @@ def main():
                        help='Kappa modulation, can receive 1 to set off')
     parser.add_argument('--like', type=int, default=1,
                        help='Like reward on Incentive agent')
-    parser.add_argument('--dqn_modulation', type=int, default=0,
-                       help='DQN modulation, can receive 0 to hand-coded modulation')
+    parser.add_argument('--dqn_modulation', type=int, default=1,
+                       help='DQN modulation, can receive 0 to hand-coded modulation or 2 to equal modulation')
 
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
@@ -49,6 +49,14 @@ def main():
     print(f"Number of seeds: {args.num_seeds}")
     print(f"Training steps: {args.steps:,}")
     print(f"Save directory: {args.save_dir}")
+
+    print(f"alpha: {args.alpha}")
+    print(f"agents: {args.agents}")
+    print(f"loss: {args.loss}")
+    print(f"kappa_: {args.kappa_}")
+    print(f"like: {args.like}")
+    print(f"dqn_modulation: {args.dqn_modulation}")
+
     print("="*60)
     print()
 
@@ -63,7 +71,16 @@ def main():
     like=args.like,
     dqn_modulation=args.dqn_modulation,
     eval_episodes=args.eval_episodes)
-       
+
+
+    print(f"alpha: {args.alpha}")
+    print(f"agents: {args.agents}")
+    print(f"loss: {args.loss}")
+    print(f"kappa_: {args.kappa_}")
+    print(f"like: {args.like}")
+    print(f"dqn_modulation: {args.dqn_modulation}")
+
+
     print("\n" + "="*60)
     print("EXPERIMENT COMPLETE!")
     print(f"Results saved to: {args.save_dir}")

@@ -29,7 +29,7 @@ def train_with_seed_incentive(seed=42,
 
     if dqn_modulation == 0 or agent != 'Incentive':
         return
-        
+       
     set_seed(seed=seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -96,15 +96,22 @@ def train_with_seed_incentive(seed=42,
 
             kappa = info.get('kappa', None)
             alpha = alpha
+
+            # kappa_ = 1, set off kappa modulation
             if kappa_ == 1 and t > 50000 :
                     q_values = q_values * (1 + alpha * kappa_ * cue_q_values)
-            elif kappa_ == 2 and t > 50000 :
-                    q_values = q_values * (1 + alpha * kappa_ * np.array([0, 0.25, 0.25, 0.25, 0.25]))                
+
+            # dqn_modulation = 2, equal modulation except by action 0 
+            elif kappa is not None and dqn_modulation == 2 and t > 50000 :
+                    print('equal c values')
+                    q_values = q_values * (1 + alpha * kappa * np.array([0, 0.25, 0.25, 0.25, 0.25]))      
+
+            # standard case 
             else:                      
                 if kappa is not None and kappa > 0 and t > 50000: 
                     q_values = q_values * (1 + alpha * kappa * cue_q_values)
                
-            a = int(np.argmax(q_values)) 
+            a = int(np.argmax(q_values))
             
         # Environment step
         ns, r, term, trunc, info = env.step(a)
@@ -260,7 +267,7 @@ def train_with_seed(seed=42,
                 if kappa is not None and kappa > 0 and t > 50000:
                     C = info.get('C')
                     q_values = q_values * (1 + alpha * kappa * C)
-                    
+                  
             a = int(np.argmax(q_values)) 
             
         # Environment step
@@ -329,7 +336,7 @@ def train_with_seed(seed=42,
 
 def complete_training(num_seeds=5, 
                    steps=1_000_000,
-                   agents=['Vanilla', 'Incentive'],
+                   agents=['Incentive'],
                    eval_episodes = 100,
                    alpha=0.05,
                    loss=100,
@@ -386,7 +393,7 @@ def complete_training(num_seeds=5,
                         
             all_results[agent] = agent_results
 
-        if agent == 'Incentive' and dqn_modulation == 1:
+        if agent == 'Incentive' and dqn_modulation > 0:
             for seed in seeds:    
                 net, cue_net, metrics = train_with_seed_incentive(
                 seed=seed,
@@ -574,14 +581,20 @@ def evaluate_agent_incentive(net, cue_net,
 
                 kappa = info.get('kappa', None)
                 alpha = alpha
+
+                # kappa_ = 1, set off kappa modulation
                 if kappa_ == 1:
                     q_values = q_values * (1 + alpha * kappa_ * cue_q_values)
-                elif kappa_ == 2 and t > 50000 :
-                    q_values = q_values * (1 + alpha * kappa_ * np.array([0, 0.25, 0.25, 0.25, 0.25]))     
+
+                # dqn_modulation = 2, equal modulation except by action 0 
+                elif kappa is not None and dqn_modulation == 2:
+                    q_values = q_values * (1 + alpha * kappa * np.array([0, 0.25, 0.25, 0.25, 0.25])) 
+                    
+                # standard case
                 else:
                     if kappa is not None and kappa > 0: 
                         q_values = q_values * (1 + alpha * kappa * cue_q_values)
-
+    
                 if deterministic:
                     a = int(np.argmax(q_values))
                 else:
