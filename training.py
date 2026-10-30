@@ -25,6 +25,7 @@ def train_with_seed_incentive(seed=42,
                               loss = 100,
                               like = 1,
                               dqn_modulation = 1,
+                              greedy_policy = 0,
                               agent = 'Incentive'): 
 
     if dqn_modulation == 0 or agent != 'Incentive':
@@ -98,7 +99,7 @@ def train_with_seed_incentive(seed=42,
             alpha = alpha
 
             # kappa_ = 1, set off kappa modulation
-            if kappa_ == 1 and t > 50000 :
+            if kappa_ == 1 and t > 50000:
                     q_values = q_values * (1 + alpha * kappa_ * cue_q_values)
 
             # dqn_modulation = 2, equal modulation except by action 0 
@@ -107,8 +108,8 @@ def train_with_seed_incentive(seed=42,
                     q_values = q_values * (1 + alpha * kappa * np.array([0, 0.25, 0.25, 0.25, 0.25]))      
 
             # standard case 
-            else:                      
-                if kappa is not None and kappa > 0 and t > 50000: 
+            else: # if greedy policy == 1 do not perform modulation                      
+                if kappa is not None and kappa > 0 and t > 50000 and greedy_policy == 0: 
                     q_values = q_values * (1 + alpha * kappa * cue_q_values)
                
             a = int(np.argmax(q_values))
@@ -117,7 +118,12 @@ def train_with_seed_incentive(seed=42,
         ns, r, term, trunc, info = env.step(a)
         ns = np.asarray(ns)
         done = term or trunc
-        cue_reward = info['R*']
+        cue_reward = info['R*']     
+
+        # Greedy policy
+        if greedy_policy == 1:
+            # consider only pellet reward
+            r = cue_reward
         
         # Store experience
         buf.push(state, a, r, ns, done)
@@ -138,7 +144,7 @@ def train_with_seed_incentive(seed=42,
                 
                 all_metrics.append(metrics)
         
-        # Training step main dqn
+        ########### Training step main dqn ############################################
         if len(buf) >= 10000 and t % 4 == 0:
             s, a_batch, r_batch, ns, d = buf.sample(32)
             s = torch.tensor(s, device=device)
@@ -343,6 +349,7 @@ def complete_training(num_seeds=5,
                    kappa_=0,
                    like=1,
                    dqn_modulation=1,
+                   greedy_policy=1,
                    save_dir='results'):
 
     os.makedirs(save_dir, exist_ok=True)
@@ -403,6 +410,7 @@ def complete_training(num_seeds=5,
                 kappa_=kappa_,
                 like=like,
                 dqn_modulation = dqn_modulation,
+                greedy_policy=greedy_policy,
                 agent = agent
                 )   
                 
@@ -421,6 +429,7 @@ def complete_training(num_seeds=5,
                     kappa_=kappa_,
                     like=like,
                     dqn_modulation=dqn_modulation,
+                    greedy_policy=greedy_policy,
                     agent=agent
                 )
                 
@@ -528,6 +537,7 @@ def evaluate_agent_incentive(net, cue_net,
                    kappa_ = 0,
                    like=1,
                    dqn_modulation = 1,
+                   greedy_policy = 0,
                    agent = 'Incentive'):
 
     if dqn_modulation == 0 or agent != 'Incentive':
@@ -592,7 +602,7 @@ def evaluate_agent_incentive(net, cue_net,
                     
                 # standard case
                 else:
-                    if kappa is not None and kappa > 0: 
+                    if kappa is not None and kappa > 0 and greedy_policy == 0: 
                         q_values = q_values * (1 + alpha * kappa * cue_q_values)
     
                 if deterministic:

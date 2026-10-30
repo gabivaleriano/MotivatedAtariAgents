@@ -35,6 +35,8 @@ def main():
                        help='Like reward on Incentive agent')
     parser.add_argument('--dqn_modulation', type=int, default=1,
                        help='DQN modulation, can receive 0 to hand-coded modulation or 2 to equal modulation')
+    parser.add_argument('--greedy_policy', type=int, default=0,
+                       help='Pellet greedy policy, can receive 1 to turn on, agent must be Incentive')
 
     # Output settings
     parser.add_argument('--save-dir', type=str, default='results',
@@ -56,6 +58,7 @@ def main():
     print(f"kappa_: {args.kappa_}")
     print(f"like: {args.like}")
     print(f"dqn_modulation: {args.dqn_modulation}")
+    print(f"greedy_policy: {args.greedy_policy}")
 
     print("="*60)
     print()
@@ -70,6 +73,7 @@ def main():
     kappa_=args.kappa_,
     like=args.like,
     dqn_modulation=args.dqn_modulation,
+    greedy_policy=args.greedy_policy,
     eval_episodes=args.eval_episodes)
 
 
@@ -79,6 +83,7 @@ def main():
     print(f"kappa_: {args.kappa_}")
     print(f"like: {args.like}")
     print(f"dqn_modulation: {args.dqn_modulation}")
+    print(f"greedy_policy: {args.greedy_policy}")
 
 
     print("\n" + "="*60)
