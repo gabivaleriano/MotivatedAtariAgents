@@ -69,12 +69,16 @@ def compute_directional_pellet_salience(pacman_x, pacman_y, traversable_position
         C[i] = pellet_score
 
     # Normalize AFTER all actions are computed
-    total = np.sum(C)
-    if total > 0:
-        C = C / total
-    else:
+    remaining = C[1:]
+    #total = np.sum(C)
+    #if total > 0:
+        #C = C / total
+    #else:
         # Fallback: uniform over movement actions only, noop stays 0
-        C[1:] = 1.0 / (n_actions - 1)
+        #C[1:] = 1.0 / (n_actions - 1)
+    exp_vals = np.exp(remaining - np.max(remaining))  # subtract max for numerical stability
+    probs = exp_vals / exp_vals.sum()
+    C[1:] = probs
 
     return C
 

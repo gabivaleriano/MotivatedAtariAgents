@@ -258,22 +258,23 @@ def train_with_seed(seed=42,
         else:
             with torch.no_grad():
                 q = net(torch.tensor(state, device=device).unsqueeze(0))
-                q_values = q.squeeze(0).cpu().numpy()    
+                q_values = q.squeeze(0).cpu().numpy() 
                 
-            if agent == 'Incentive':
+                if agent == 'Incentive': 
+                     
+                    # softmax normalization over q_values
+                    aux = q_values
+                    exp_vals = np.exp(aux - np.max(aux))  # subtract max for numerical stability
+                    probs = exp_vals / exp_vals.sum()
+                    q_values = probs       
+                    
+                    C = info.get('C', None)
+                    kappa = info.get('kappa', None)
+                    alpha = alpha           
+                     
+                    if kappa is not None and kappa > 0 and t > 50000 and C not None: 
+                        q_values = q_values * (1 + alpha * kappa * C)   
                 
-                # softmax normalization over q_values
-                aux = q_values
-                exp_vals = np.exp(aux - np.max(aux))  # subtract max for numerical stability
-                probs = exp_vals / exp_vals.sum()
-                q_values = probs  
-                
-                kappa = info.get('kappa', None)                
-                alpha = 0.05
-                if kappa is not None and kappa > 0 and t > 50000:
-                    C = info.get('C')
-                    q_values = q_values * (1 + alpha * kappa * C)
-                  
             a = int(np.argmax(q_values)) 
             
         # Environment step
@@ -349,7 +350,7 @@ def complete_training(num_seeds=5,
                    kappa_=0,
                    like=1,
                    dqn_modulation=1,
-                   greedy_policy=1,
+                   greedy_policy=0,
                    save_dir='results'):
 
     os.makedirs(save_dir, exist_ok=True)
@@ -486,21 +487,22 @@ def evaluate_agent(net,
             with torch.no_grad():
                 q = net(torch.tensor(state.__array__(), device=device).unsqueeze(0))
                 q_values = q.squeeze(0).cpu().numpy()
-                
-                if agent == 'Incentive':
-                    
+
+                if agent == 'Incentive': 
+                     
                     # softmax normalization over q_values
                     aux = q_values
                     exp_vals = np.exp(aux - np.max(aux))  # subtract max for numerical stability
                     probs = exp_vals / exp_vals.sum()
-                    q_values = probs  
+                    q_values = probs       
                     
-                    kappa = info.get('kappa', None)                
-                    alpha = 0.05
-                    if kappa is not None and kappa > 0:
-                        C = info.get('C')
+                    C = info.get('C', None)
+                    kappa = info.get('kappa', None)
+                    alpha = alpha           
+                     
+                    if kappa is not None and kappa > 0 and t > 50000 and C not None: 
                         q_values = q_values * (1 + alpha * kappa * C)   
-
+                
                 if deterministic:
                     a = int(np.argmax(q_values))
                 else:
