@@ -217,6 +217,7 @@ def train_with_seed(seed=42,
                     steps=1_000_000,
                     dqn_modulation=1,
                     loss=100,
+                    alpha=0.05,
                     agent = 'Vanilla'):
     
     if agent == 'Incentive' and dqn_modulation == 1:
@@ -272,7 +273,7 @@ def train_with_seed(seed=42,
                     kappa = info.get('kappa', None)
                     alpha = alpha           
                      
-                    if kappa is not None and kappa > 0 and t > 50000 and C not None: 
+                    if kappa is not None and kappa > 0 and t > 50000 and C is not None: 
                         q_values = q_values * (1 + alpha * kappa * C)   
                 
             a = int(np.argmax(q_values)) 
@@ -455,6 +456,7 @@ def evaluate_agent(net,
                    deterministic=True,
                    dqn_modulation=1,
                    loss=100,
+                   alpha=0.05,
                    agent = 'Vanilla'):
 
     if agent == 'Incentive' and dqn_modulation == 1:
@@ -500,7 +502,7 @@ def evaluate_agent(net,
                     kappa = info.get('kappa', None)
                     alpha = alpha           
                      
-                    if kappa is not None and kappa > 0 and t > 50000 and C not None: 
+                    if kappa is not None and kappa > 0 and C is not None: 
                         q_values = q_values * (1 + alpha * kappa * C)   
                 
                 if deterministic:
